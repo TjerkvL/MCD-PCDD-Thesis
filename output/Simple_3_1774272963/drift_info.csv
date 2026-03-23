@@ -1,0 +1,36 @@
+log_name;drift_or_noise_id;drift_attribute;drift_sub_attribute;value
+log_1_1774272963.xes;drift_1;log_id;na;log_1_1774272963.xes
+log_1_1774272963.xes;drift_1;drift_id;na;1
+log_1_1774272963.xes;drift_1;process_perspective;na;control-flow
+log_1_1774272963.xes;drift_1;drift_type;na;recurring
+log_1_1774272963.xes;drift_1;process_trees_1;0;+( +( +( ->( 'a', 'j' ), +( 'd', 'i' ) ), +( ->( 'c', 'g' ), 'f' ) ), ->( 'b', X( X( 'e', 'k' ), 'h' ) ) )
+log_1_1774272963.xes;drift_1;process_trees_2;1;+( +( +( ->( 'a', 'j' ), +( 'd', 'i' ) ), +( ->( 'c', 'g' ), 'f' ) ), ->( 'b', X( X( 'Random activity 1', 'k' ), 'h' ) ) )
+log_1_1774272963.xes;drift_1;process_trees_3;2;+( +( +( ->( 'a', 'j' ), +( 'd', 'i' ) ), +( ->( 'c', 'g' ), 'f' ) ), ->( 'b', X( X( 'e', 'k' ), 'h' ) ) )
+log_1_1774272963.xes;drift_1;process_trees_4;3;+( +( +( ->( 'a', 'j' ), +( 'd', 'i' ) ), +( ->( 'c', 'g' ), 'f' ) ), ->( 'b', X( X( 'Random activity 1', 'k' ), 'h' ) ) )
+log_1_1774272963.xes;drift_1;change_info_1;change_type;recurring
+log_1_1774272963.xes;drift_1;change_info_1;change_trace_index;[1001, 1434]
+log_1_1774272963.xes;drift_1;change_info_1;process_tree_before;+( +( +( ->( 'a', 'j' ), +( 'd', 'i' ) ), +( ->( 'c', 'g' ), 'f' ) ), ->( 'b', X( X( 'e', 'k' ), 'h' ) ) )
+log_1_1774272963.xes;drift_1;change_info_1;process_tree_after;+( +( +( ->( 'a', 'j' ), +( 'd', 'i' ) ), +( ->( 'c', 'g' ), 'f' ) ), ->( 'b', X( X( 'Random activity 1', 'k' ), 'h' ) ) )
+log_1_1774272963.xes;drift_1;change_info_1;activities_deleted;[e]
+log_1_1774272963.xes;drift_1;change_info_1;activities_added;[Random activity 1]
+log_1_1774272963.xes;drift_1;change_info_1;activities_moved;[]
+log_1_1774272963.xes;drift_1;change_info_1;change_start;2025-04-23 05:42:33.280762
+log_1_1774272963.xes;drift_1;change_info_1;change_end;2025-10-30 14:42:48.283374
+log_1_1774272963.xes;drift_1;change_info_2;change_type;recurring
+log_1_1774272963.xes;drift_1;change_info_2;change_trace_index;[2434, 2750]
+log_1_1774272963.xes;drift_1;change_info_2;process_tree_before;+( +( +( ->( 'a', 'j' ), +( 'd', 'i' ) ), +( ->( 'c', 'g' ), 'f' ) ), ->( 'b', X( X( 'Random activity 1', 'k' ), 'h' ) ) )
+log_1_1774272963.xes;drift_1;change_info_2;process_tree_after;+( +( +( ->( 'a', 'j' ), +( 'd', 'i' ) ), +( ->( 'c', 'g' ), 'f' ) ), ->( 'b', X( X( 'e', 'k' ), 'h' ) ) )
+log_1_1774272963.xes;drift_1;change_info_2;activities_deleted;[Random activity 1]
+log_1_1774272963.xes;drift_1;change_info_2;activities_added;[e]
+log_1_1774272963.xes;drift_1;change_info_2;activities_moved;[]
+log_1_1774272963.xes;drift_1;change_info_2;change_start;2027-02-10 22:36:44.541631
+log_1_1774272963.xes;drift_1;change_info_2;change_end;2027-07-24 09:58:17.788777
+log_1_1774272963.xes;drift_1;change_info_3;change_type;recurring
+log_1_1774272963.xes;drift_1;change_info_3;change_trace_index;[3750, 4065]
+log_1_1774272963.xes;drift_1;change_info_3;process_tree_before;+( +( +( ->( 'a', 'j' ), +( 'd', 'i' ) ), +( ->( 'c', 'g' ), 'f' ) ), ->( 'b', X( X( 'e', 'k' ), 'h' ) ) )
+log_1_1774272963.xes;drift_1;change_info_3;process_tree_after;+( +( +( ->( 'a', 'j' ), +( 'd', 'i' ) ), +( ->( 'c', 'g' ), 'f' ) ), ->( 'b', X( X( 'Random activity 1', 'k' ), 'h' ) ) )
+log_1_1774272963.xes;drift_1;change_info_3;activities_deleted;[e]
+log_1_1774272963.xes;drift_1;change_info_3;activities_added;[Random activity 1]
+log_1_1774272963.xes;drift_1;change_info_3;activities_moved;[]
+log_1_1774272963.xes;drift_1;change_info_3;change_start;2028-11-10 23:29:15.075302
+log_1_1774272963.xes;drift_1;change_info_3;change_end;2029-03-30 12:02:04.794843

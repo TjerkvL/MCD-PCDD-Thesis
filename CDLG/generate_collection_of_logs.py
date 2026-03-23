@@ -36,6 +36,16 @@ def event_log_generation_engine(log_id, par, collection, out_folder, file_path_t
             drift_instance.set_log_id(log_name)
             drift_instance.set_drift_id(drift_id)
             drift_instance.set_process_perspective('control-flow')
+        if par.Number_drifts_per_log[0] > 1:  # Only force order for multi-drift logs
+            if drift_id == 1:
+                drift_type = DriftTypes.sudden.value
+            elif drift_id == 2:
+                drift_type = DriftTypes.gradual.value
+            elif drift_id == 3:
+                drift_type = DriftTypes.sudden.value
+            else:
+                drift_type = select_random(par.Drift_types, option='random')
+        else:
             drift_type = select_random(par.Drift_types, option='random')
             drift_instance.set_drift_type(drift_type)
             drift_instance.add_process_tree(tree_initial)

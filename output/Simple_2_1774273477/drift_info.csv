@@ -1,0 +1,16 @@
+log_name;drift_or_noise_id;drift_attribute;drift_sub_attribute;value
+log_1_1774273477.xes;drift_1;log_id;na;log_1_1774273477.xes
+log_1_1774273477.xes;drift_1;drift_id;na;1
+log_1_1774273477.xes;drift_1;process_perspective;na;control-flow
+log_1_1774273477.xes;drift_1;drift_type;na;gradual
+log_1_1774273477.xes;drift_1;process_trees_1;0;+( +( 'a', ->( ->( 'c', 'h' ), +( 'd', 'g' ) ) ), ->( *( 'b', 'e' ), ->( 'f', +( 'i', 'j' ) ) ) )
+log_1_1774273477.xes;drift_1;process_trees_2;1;+( +( 'a', ->( ->( *tau*, 'h' ), +( 'd', 'g' ) ) ), ->( *( 'b', 'e' ), ->( 'f', +( 'i', 'j', 'Random activity 1' ) ) ) )
+log_1_1774273477.xes;drift_1;change_info_1;change_type;gradual
+log_1_1774273477.xes;drift_1;change_info_1;change_trace_index;[1001, 1501]
+log_1_1774273477.xes;drift_1;change_info_1;process_tree_before;+( +( 'a', ->( ->( 'c', 'h' ), +( 'd', 'g' ) ) ), ->( *( 'b', 'e' ), ->( 'f', +( 'i', 'j' ) ) ) )
+log_1_1774273477.xes;drift_1;change_info_1;process_tree_after;+( +( 'a', ->( ->( *tau*, 'h' ), +( 'd', 'g' ) ) ), ->( *( 'b', 'e' ), ->( 'f', +( 'i', 'j', 'Random activity 1' ) ) ) )
+log_1_1774273477.xes;drift_1;change_info_1;activities_deleted;[c]
+log_1_1774273477.xes;drift_1;change_info_1;activities_added;[Random activity 1]
+log_1_1774273477.xes;drift_1;change_info_1;activities_moved;[]
+log_1_1774273477.xes;drift_1;change_info_1;change_start;2025-04-26 09:53:02.095362
+log_1_1774273477.xes;drift_1;change_info_1;change_end;2025-12-12 00:33:30.446915
