@@ -1,0 +1,26 @@
+Text file containing the exact timestamps (trace number) where drifts occur for each log
+
+Synthetic Logs:
+
+Simple:
+1- 1000
+2- 1000
+3- 1000
+4- 1000
+
+Intermediate:
+1- 667---1334
+2- 400---800
+3- 667---1334
+4- 400---800
+
+Difficult:
+1- 400---800---1600
+2- 200---400---800
+3- 400---800---1600
+4- 200---400---800
+
+Real-world Log:
+
+BPIC 2015:
+1- 1199---2031---3440---4493---5649
