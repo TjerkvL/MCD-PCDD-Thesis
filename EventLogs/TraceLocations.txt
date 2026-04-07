@@ -2,23 +2,24 @@ Text file containing the exact timestamps (trace number) where drifts occur for 
 
 Synthetic Logs:
 
+Drift Locations:
 Simple:
-1- 1000
-2- 1000
-3- 1000
-4- 1000
+1 (sud): 1000
+2 (gra): 666 -(1333)
+3 (rec): 666 - 1333
+4 (inc): 500 - 1500
 
 Intermediate:
-1- 667---1334
-2- 400---800
-3- 667---1334
-4- 400---800
+1: 666 - 1333
+2: 800 - 1200
+3: 666 - 1333
+4: 800 - 1200
 
 Difficult:
-1- 400---800---1600
-2- 200---400---800
-3- 400---800---1600
-4- 200---400---800
+1: 400 - 800 - 1200
+2: 400 - 600 - 800
+3: 400 - 800 - 1200
+4: 400 - 600 - 800
 
 Real-world Log:
 
