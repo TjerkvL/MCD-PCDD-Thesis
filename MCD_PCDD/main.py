@@ -7,6 +7,7 @@ from encoder import Encoder
 from mcd import MCD
 from torch.utils.data import DataLoader
 import os
+from adaptive_window import AdaptiveWindow
 
 def main(config_file, seed=1111,device='cpu'):
     # set seed
@@ -47,6 +48,12 @@ def main(config_file, seed=1111,device='cpu'):
         optimizer = torch.optim.Adam(model.parameters(), lr=config['learning_rate'])
         mcd = MCD(model, optimizer, config['epochs'], config['sub_window_num'], config['m'], config['k'], config['eps_small'], config['eps_big'], config['temperature'], config['lamb'], config['percentile'], device)
 
+        adaptive = AdaptiveWindow(
+            mcd,
+            min_subwindows=config['min_subwindows'],
+            max_subwindows=config['max_subwindows']
+        )
+
         threshold = 0
         first_window = True
 
@@ -54,13 +61,33 @@ def main(config_file, seed=1111,device='cpu'):
 
         # Training loop for each window of data
         for i, window_data in enumerate(dataloader):
-            print(f"Processing window {i}")
-            window_data = window_data.to(device).squeeze(0)  
+            #print(f"Processing window {i}")
+            window_data = window_data.to(device).squeeze(0)
+            
+            # --- Adaptive window logic ---
+            sub_win_size = int(window_data.size(0) / config['sub_window_num'])
+            sub_windows = list(torch.split(window_data, sub_win_size))
+
+            # Keep a copy as candidate pool (for expansion)
+            candidate_pool = sub_windows.copy()
+
+            # Step 1: shrink if unstable
+            sub_windows = adaptive.shrink_window(sub_windows, threshold)
+
+            # Step 2: expand if stable
+            sub_windows = adaptive.expand_window(sub_windows, candidate_pool, threshold)
+
+            # Reconstruct window_data
+            window_data = torch.cat(sub_windows, dim=0)
+
+            print(f"Original subwindows: {config['sub_window_num']}")
+            print(f"Adjusted subwindows: {len(sub_windows)}")
+
             if not first_window:
                 distances = mcd.test(window_data)
-                print(f"Window {i}")
-                print(f"Distances: {[d.item() for d in distances]}")
-                print(f"Threshold: {threshold.item() if hasattr(threshold, 'item') else threshold}")
+                #print(f"Window {i}")
+                #print(f"Distances: {[d.item() for d in distances]}")
+                #print(f"Threshold: {threshold.item() if hasattr(threshold, 'item') else threshold}")
                 if distances[-1] > threshold:
                     # Drift detection
                     start_idx = max(0, i * slide + window_size - slide)
@@ -71,9 +98,9 @@ def main(config_file, seed=1111,device='cpu'):
 
                     detected_drifts.append((start_trace, end_trace))
 
-                    print(f"Drift detected:")
-                    print(f"  event range: {start_idx}-{end_idx}")
-                    print(f"  trace range: {start_trace}-{end_trace}")
+                    #print(f"Drift detected:")
+                    #print(f"  event range: {start_idx}-{end_idx}")
+                    #print(f"  trace range: {start_trace}-{end_trace}")
             threshold = mcd.train(window_data) 
             first_window = False 
         
@@ -87,7 +114,7 @@ def main(config_file, seed=1111,device='cpu'):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument("--seed", type=int, default=1111, help="Random seed for reproducibility")
-    parser.add_argument("--config_file", type=str,default="configs/para_simulated_data.yaml", help="Path to the configuration file")
+    parser.add_argument("--config_file", type=str,default="configs/process_test.yaml", help="Path to the configuration file")
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

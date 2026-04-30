@@ -2,6 +2,8 @@ dataset_path: data/Simple_1.npy
 
 win_size: 250
 sub_window_num: 5
+min_subwindows: 3
+max_subwindows: 5
 
 n_experiments: 1
 

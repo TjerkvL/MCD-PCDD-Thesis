@@ -170,36 +170,53 @@ def EvaluatePerformance(detectedDriftCoords, actualDriftCoords, lag_window=50, p
 
 
 #Dictionary of the resuls to be evaluated, coupling the file name with the list of detected drift locations
-detectedDriftCoords = {
-    "Simple_1.xes" : [1000],
-    "Simple_2.xes" : [666],
-    "Simple_3.xes" : [666, 1333],
-    "Simple_4.xes" : [500, 1500],
-    "Intermediate_1.xes" : [666, 1333],
-    "Intermediate_2.xes" : [800, 1200],
-    "Intermediate_3.xes" : [666, 1333],
-    "Intermediate_4.xes" : [800, 1200],
-    "Difficult_1.xes" : [400, 800, 1200],
-    "Difficult_2.xes" : [400, 600, 800],
-    "Difficult_3.xes" : [400, 800, 1200],
-    "Difficult_4.xes" : [400, 600, 800],
+deSousaCoords = {
+    "Simple_1.xes" : [341, 681, 903, 1139],
+    "Simple_2.xes" : [294, 1124, 1649],
+    "Simple_3.xes" : [374],
+    "Simple_4.xes" : [194, 947],
+    "Intermediate_1.xes" : [384, 542, 718, 1934],
+    "Intermediate_2.xes" : [152, 670, 1844],
+    "Intermediate_3.xes" : [374],
+    "Intermediate_4.xes" : [194, 947],
+    "Difficult_1.xes" : [251, 534, 879, 1235, 1734],
+    "Difficult_2.xes" : [292, 457, 765],
+    "Difficult_3.xes" : [181, 565, 842, 1478, 1851],
+    "Difficult_4.xes" : [252, 568],
+    "BPIC2015Merged.xes" : [396, 1047, 1226, 1465, 2037, 2457, 2960, 3446, 3677, 4195, 4413]
+}
+
+
+hueteCoords = {
+    "Simple_1.xes" : [609, 817, 1062],
+    "Simple_2.xes" : [604, 995, 1631],
+    "Simple_3.xes" : [779, 1304, 1935],
+    "Simple_4.xes" : [410],
+    "Intermediate_1.xes" : [],
+    "Intermediate_2.xes" : [1129, 1381],
+    "Intermediate_3.xes" : [352, 689, 1382],
+    "Intermediate_4.xes" : [468, 1327, 1748],
+    "Difficult_1.xes" : [928, 1268],
+    "Difficult_2.xes" : [188, 862],
+    "Difficult_3.xes" : [1550],
+    "Difficult_4.xes" : [527, 791],
+    "BPIC2015Merged.xes" : [901, 1089, 1170, 1191, 1207, 1224, 1260, 1460, 1508, 1553, 1599, 1624, 1659, 1837, 1863, 1948, 2188, 2227, 2260, 2329, 2495, 2511, 4549, 5636]
+}
+
+martjushevCoords = {
+    "Simple_1.xes" : [998],
+    "Simple_2.xes" : [97, 728, 867, 1081, 1150],
+    "Simple_3.xes" : [666, 1164, 1529, 1816],
+    "Simple_4.xes" : [495, 1003],
+    "Intermediate_1.xes" : [1301],
+    "Intermediate_2.xes" : [],
+    "Intermediate_3.xes" : [677, 1330],
+    "Intermediate_4.xes" : [794, 1032, 1194],
+    "Difficult_1.xes" : [401, 1221],
+    "Difficult_2.xes" : [397, 548, 786],
+    "Difficult_3.xes" : [760],
+    "Difficult_4.xes" : [375, 609, 792],
     "BPIC2015Merged.xes" : [1199, 2031, 3440, 4493, 5649]
 }
 
-detectedDriftCoordsBadExample = {
-    "Simple_1.xes" : [900],
-    "Simple_2.xes" : [676],
-    "Simple_3.xes" : [656, 1333, 1400],
-    "Simple_4.xes" : [500, 1000, 1500],
-    "Intermediate_1.xes" : [666, 1333, 1500],
-    "Intermediate_2.xes" : [780, 1200],
-    "Intermediate_3.xes" : [666, 1233],
-    "Intermediate_4.xes" : [234, 800, 1200],
-    "Difficult_1.xes" : [400, 800, 830, 1200],
-    "Difficult_2.xes" : [400, 600, 800, 980],
-    "Difficult_3.xes" : [200, 800, 1200],
-    "Difficult_4.xes" : [400, 450, 500, 600, 800],
-    "BPIC2015Merged.xes" : [1199, 2031, 3440, 4493, 5649]
-}
-
-EvaluatePerformance(detectedDriftCoordsBadExample, actualDriftCoords, lag_window=50)
+EvaluatePerformance(hueteCoords, actualDriftCoords, lag_window=150)
