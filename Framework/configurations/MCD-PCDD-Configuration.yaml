@@ -1,0 +1,24 @@
+dataset_path: eventLogs/Simple_1.npy
+trace_ids_path: traceIDs/Simple_1_trace_ids.npy
+
+win_size: 250
+sub_window_num: 5
+min_subwindows: 3
+max_subwindows: 5
+
+hidden_size: 16
+output_size: 8
+learning_rate: 0.001
+epochs: 3
+
+m: 10
+k: 10
+
+eps_small: 0.01
+eps_big: 0.1
+
+temperature: 0.5
+lamb: 0.1
+
+percentile: 0.775
+consecutive_required: 1

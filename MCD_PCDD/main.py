@@ -48,11 +48,7 @@ def main(config_file, seed=1111,device='cpu'):
         optimizer = torch.optim.Adam(model.parameters(), lr=config['learning_rate'])
         mcd = MCD(model, optimizer, config['epochs'], config['sub_window_num'], config['m'], config['k'], config['eps_small'], config['eps_big'], config['temperature'], config['lamb'], config['percentile'], device)
 
-        adaptive = AdaptiveWindow(
-            mcd,
-            min_subwindows=config['min_subwindows'],
-            max_subwindows=config['max_subwindows']
-        )
+        adaptive = AdaptiveWindow(mcd, min_subwindows=config['min_subwindows'], max_subwindows=config['max_subwindows'])
 
         threshold = 0
         first_window = True
@@ -122,17 +118,3 @@ if __name__ == "__main__":
 
     main(config_file=args.config_file, seed=args.seed, device=device)
     #Use python main.py --config_file path/to/config.yaml to run the main code
-
-# from xes_parser import load_xes
-# from feature_builder import build_event_log_array
-# import numpy as np
-
-# if __name__ == "__main__":
-#     log = load_xes("data/Simple_1.xes")  # <-- your file
-#     data = build_event_log_array(log)
-
-#     print("Shape:", data.shape)
-#     print("First 5 rows:", data[:5])
-
-#     np.save("data/Simple_1.npy", data)
-#     print("Saved to data/Simple_1.npy")
