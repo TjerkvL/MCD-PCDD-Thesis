@@ -114,7 +114,13 @@ class Comparator:
 
             # ---------------- GP ----------------
             # (use last batch samples/embeddings as in original behaviour)
-            gp = self.gp(samples, emb)
+            gps = []
+
+            for samples in sub_samples:
+                emb = self.model(samples).mean(dim=1)
+                gps.append(self.gp(samples, emb))
+
+            gp = torch.mean(torch.stack(gps))
 
             # ---------------- TOTAL LOSS ----------------
             loss = self.contrastive_loss(
@@ -129,6 +135,23 @@ class Comparator:
 
         return self.compute_threshold(windows)
 
+    def test(self, window_data):
+            windows = torch.split(
+                window_data,
+                int(window_data.size(0) / self.sub_window_num)
+            )
+
+            embs = []
+            for w in windows:
+                s = self.generate_samples(w)
+                with torch.no_grad():
+                    embs.append(self.model(s).mean(dim=1))
+
+            pairwise = self.compute_all_pairwise_discrepancy(embs)
+            consecutive = self.compute_consecutive_discrepancy(embs)
+
+            return pairwise, consecutive    
+
     def compute_threshold(self, windows):
         losses = []
 
@@ -139,22 +162,27 @@ class Comparator:
             losses.append(l)
 
         return torch.quantile(torch.cat(losses), self.percentile)
+    
+    def compute_all_pairwise_discrepancy(self, embs):
+        """
+        embs: list of [N, d] tensors
+        returns: matrix of pairwise discrepancies
+        """
+        distances = []
 
-    def test(self, window_data):
-        windows = torch.split(
-            window_data,
-            int(window_data.size(0) / self.sub_window_num)
-        )
+        for i in range(len(embs)):
+            for j in range(i + 1, len(embs)):
+                diff = embs[i].unsqueeze(1) - embs[j].unsqueeze(0)
+                dist = torch.norm(diff, dim=2).mean()
+                distances.append(dist)
 
-        embs = []
-        for w in windows:
-            s = self.generate_samples(w)
-            with torch.no_grad():
-                embs.append(self.model(s).mean(dim=1))
-
-        last = embs[-1]
-
-        return [
-            self.compute_negative_loss(e, last)
-            for e in embs[:-1]
-        ]
+        return torch.stack(distances)
+    
+    
+    def compute_consecutive_discrepancy(self, embs):
+        return torch.stack([
+            self.compute_negative_loss(embs[i], embs[i + 1])
+            for i in range(len(embs) - 1)
+        ])
+    
+    

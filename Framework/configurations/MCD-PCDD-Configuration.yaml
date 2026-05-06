@@ -1,5 +1,5 @@
-dataset_path: eventLogs/Simple_1.npy
-trace_ids_path: traceIDs/Simple_1_trace_ids.npy
+dataset_path: eventLogs/Intermediate_1.npy
+trace_ids_path: traceIDs/Intermediate_1_trace_ids.npy
 
 win_size: 250
 sub_window_num: 5
@@ -20,5 +20,5 @@ eps_big: 0.1
 temperature: 0.5
 lamb: 0.1
 
-percentile: 0.775
-consecutive_required: 1
+percentile: 0.85
+consecutive_required: 2

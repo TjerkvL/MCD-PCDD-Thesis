@@ -1,9 +1,8 @@
 import argparse
-from logging import config
-import yaml
 import torch
 import numpy as np
 import os
+import yaml
 
 from torch.utils.data import DataLoader
 
@@ -16,22 +15,24 @@ from detector import Detector
 
 def main(config_file, seed=1111, device='cpu'):
 
+    # ---------------- SEEDING ----------------
     np.random.seed(seed)
     torch.manual_seed(seed)
 
+    # ---------------- CONFIG ----------------
     with open(config_file, 'r') as f:
         config = yaml.safe_load(f)
 
+    # ---------------- DATA ----------------
     dataset = np.load(config['dataset_path'], allow_pickle=True)
     dataset = torch.tensor(dataset, dtype=torch.float32)
-    
-    if not os.path.exists(config['trace_ids_path']):
-        raise FileNotFoundError(f"Cannot find trace_ids at {config['trace_ids_path']}")
+
     trace_ids = np.load(config['trace_ids_path'])
 
     window_size = config['win_size']
     slide = int(window_size / config['sub_window_num'])
 
+    # ---------------- MODULES ----------------
     sampler = Sampler(config['m'], config['k'], device)
 
     model = Encoder(
@@ -43,7 +44,10 @@ def main(config_file, seed=1111, device='cpu'):
     optimizer = torch.optim.Adam(model.parameters(), lr=config['learning_rate'])
 
     comparator = Comparator(
-        model, optimizer, sampler, device,
+        model,
+        optimizer,
+        sampler,
+        device,
         config['epochs'],
         config['sub_window_num'],
         config['m'],
@@ -69,42 +73,55 @@ def main(config_file, seed=1111, device='cpu'):
         config['consecutive_required']
     )
 
+    # ---------------- DATA LOADER ----------------
     loader = DataLoader(
         WindowedDataset(dataset, window_size, slide),
         batch_size=1
-    )  
+    )
 
+    # ---------------- STATE ----------------
     first = True
     threshold = 0
 
+    # ---------------- MAIN LOOP ----------------
     for i, window in enumerate(loader):
 
         window = window.squeeze(0).to(device)
 
-        # --- STEP 1: create initial subwindows ---
+        # ---- STEP 1: SUB-WINDOWING ----
         sub_windows = collector.collect(window)
 
-        # --- STEP 2: adaptive logic ---
+        # ---- STEP 2: ADAPTIVE SHRINK/EXPAND ----
         candidate_pool = sub_windows.copy()
 
         sub_windows = collector.shrink_window(sub_windows, threshold)
         sub_windows = collector.expand_window(sub_windows, candidate_pool, threshold)
 
-        # --- IMPORTANT: rebuild window ---
+        # ---- REBUILD WINDOW ----
         window = torch.cat(sub_windows, dim=0)
 
-        # --- STEP 3: MCD ---
-        if not first:
-            distances = comparator.test(window)
-
-            if distances[-1] > threshold:
-                start_idx = max(0, i * slide + window_size - slide)
-                end_idx = min(len(dataset), i * slide + window_size)
-
-                if detector.detect(distances, threshold):
-                    print(f"Drift at trace {trace_ids[start_idx]}")
-
+        # ---- STEP 3: TRAIN + UPDATE THRESHOLD ----
         threshold = comparator.train(window)
+
+        # ---- STEP 4: DRIFT DETECTION ----
+        if not first:
+
+            # FULL MCD STRUCTURE (pairwise + consecutive)
+            pairwise, consecutive = comparator.test(window)
+
+            # GLOBAL MAXIMUM CONCEPT DISCREPANCY
+            max_disc = torch.max(pairwise)
+
+            if max_disc > threshold:
+
+                # CONSECUTIVE DRIFT CHECK
+                if detector.detect(consecutive, threshold):
+
+                    start_idx = max(0, i * slide + window_size - slide)
+                    end_idx = min(len(dataset), i * slide + window_size)
+
+                    print(f"Drift detected at trace {trace_ids[end_idx]}")
+
         first = False
 
 

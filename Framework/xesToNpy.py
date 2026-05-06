@@ -54,6 +54,6 @@ def xesToNpy(event_log_path, output_data_path, output_trace_ids_path):
     print(f"Saved trace IDs to {output_trace_ids_path}")
 
 
-xesToNpy(r"C:\Users\tjerk\Documents\GitHub\MCD-PCDD-Thesis\EventLogs\Synthetic Logs\Simple_1.xes",
-          "eventLogs/Simple_1.npy",
-            "traceIDs/Simple_1_trace_ids.npy")
+xesToNpy(r"C:\Users\tjerk\Documents\GitHub\MCD-PCDD-Thesis\EventLogs\Synthetic Logs\Intermediate_1.xes",
+          "eventLogs/Intermediate_1.npy",
+            "traceIDs/Intermediate_1_trace_ids.npy")
