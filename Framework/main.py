@@ -5,6 +5,7 @@ import os
 import yaml
 
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from collector import WindowedDataset, Collector
 from sampler import Sampler
@@ -23,106 +24,124 @@ def main(config_file, seed=1111, device='cpu'):
     with open(config_file, 'r') as f:
         config = yaml.safe_load(f)
 
-    # ---------------- DATA ----------------
-    dataset = np.load(config['dataset_path'], allow_pickle=True)
-    dataset = torch.tensor(dataset, dtype=torch.float32)
+    dataset_folder = config['dataset_path']
+    trace_folder = config['trace_ids_path']
 
-    trace_ids = np.load(config['trace_ids_path'])
+    # ---------------- FIND MATCHING FILES ----------------
+    dataset_files = [f for f in os.listdir(dataset_folder) if f.endswith('.npy')]
+    trace_files = [f for f in os.listdir(trace_folder) if f.endswith('.npy')]
 
-    window_size = config['win_size']
-    slide = int(window_size / config['sub_window_num'])
+    # Build mapping: prefix -> trace file
+    trace_map = {}
+    for tf in trace_files:
+        prefix = tf.replace('_trace_ids.npy', '')
+        trace_map[prefix] = tf
 
-    # ---------------- MODULES ----------------
-    sampler = Sampler(config['m'], config['k'], device)
+    # ---------------- LOOP OVER DATASETS ----------------
+    for df in dataset_files:
 
-    model = Encoder(
-        dataset.shape[1],
-        config['hidden_size'],
-        config['output_size']
-    ).to(device)
+        prefix = df.replace('.npy', '')
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=config['learning_rate'])
+        if prefix not in trace_map:
+            print(f"Skipping {df} (no matching trace_ids)")
+            continue
 
-    comparator = Comparator(
-        model,
-        optimizer,
-        sampler,
-        device,
-        config['epochs'],
-        config['sub_window_num'],
-        config['m'],
-        config['k'],
-        config['eps_small'],
-        config['eps_big'],
-        config['temperature'],
-        config['lamb'],
-        config['percentile']
-    )
+        print(f"\nProcessing dataset: {prefix}")
 
-    collector = Collector(
-        window_size,
-        config['sub_window_num'],
-        config['min_subwindows'],
-        config['max_subwindows'],
-        comparator
-    )
+        dataset = np.load(os.path.join(dataset_folder, df), allow_pickle=True)
+        dataset = torch.tensor(dataset, dtype=torch.float32)
 
-    detector = Detector(
-        comparator,
-        config['percentile'],
-        config['consecutive_required']
-    )
+        trace_ids = np.load(os.path.join(trace_folder, trace_map[prefix]))
 
-    # ---------------- DATA LOADER ----------------
-    loader = DataLoader(
-        WindowedDataset(dataset, window_size, slide),
-        batch_size=1
-    )
+        window_size = config['win_size']
+        slide = int(window_size / config['sub_window_num'])
 
-    # ---------------- STATE ----------------
-    first = True
-    threshold = 0
+        # ---------------- MODULES ----------------
+        sampler = Sampler(config['m'], config['k'], device)
 
-    # ---------------- MAIN LOOP ----------------
-    for i, window in enumerate(loader):
+        model = Encoder(
+            dataset.shape[1],
+            config['hidden_size'],
+            config['output_size']
+        ).to(device)
 
-        window = window.squeeze(0).to(device)
+        optimizer = torch.optim.Adam(model.parameters(), lr=config['learning_rate'])
 
-        # ---- STEP 1: SUB-WINDOWING ----
-        sub_windows = collector.collect(window)
+        comparator = Comparator(
+            model,
+            optimizer,
+            sampler,
+            device,
+            config['epochs'],
+            config['sub_window_num'],
+            config['m'],
+            config['k'],
+            config['eps_small'],
+            config['eps_big'],
+            config['temperature'],
+            config['lamb'],
+            config['percentile']
+        )
 
-        # ---- STEP 2: ADAPTIVE SHRINK/EXPAND ----
-        candidate_pool = sub_windows.copy()
+        collector = Collector(
+            window_size,
+            config['sub_window_num'],
+            config['min_subwindows'],
+            config['max_subwindows'],
+            comparator
+        )
 
-        sub_windows = collector.shrink_window(sub_windows, threshold)
-        sub_windows = collector.expand_window(sub_windows, candidate_pool, threshold)
+        detector = Detector(
+            comparator,
+            config['percentile'],
+            config['consecutive_required']
+        )
 
-        # ---- REBUILD WINDOW ----
-        window = torch.cat(sub_windows, dim=0)
+        # ---------------- DATA LOADER ----------------
+        dataset_obj = WindowedDataset(dataset, window_size, slide)
+        loader = DataLoader(dataset_obj, batch_size=1)
 
-        # ---- STEP 3: TRAIN + UPDATE THRESHOLD ----
-        threshold = comparator.train(window)
+        # ---------------- STATE ----------------
+        first = True
+        threshold = 0
+        drift_Trace_IDs = []
 
-        # ---- STEP 4: DRIFT DETECTION ----
-        if not first:
+        # ---------------- MAIN LOOP ----------------
+        for i, window in enumerate(tqdm(loader, total=len(dataset_obj), desc=f"{prefix}")):
 
-            # FULL MCD STRUCTURE (pairwise + consecutive)
-            pairwise, consecutive = comparator.test(window)
+            window = window.squeeze(0).to(device)
 
-            # GLOBAL MAXIMUM CONCEPT DISCREPANCY
-            max_disc = torch.max(pairwise)
+            # ---- STEP 1: SUB-WINDOWING ----
+            sub_windows = collector.collect(window)
 
-            if max_disc > threshold:
+            # ---- STEP 2: ADAPTIVE SHRINK/EXPAND ----
+            candidate_pool = sub_windows.copy()
 
-                # CONSECUTIVE DRIFT CHECK
-                if detector.detect(consecutive, threshold):
+            sub_windows = collector.shrink_window(sub_windows, threshold)
+            sub_windows = collector.expand_window(sub_windows, candidate_pool, threshold)
 
-                    start_idx = max(0, i * slide + window_size - slide)
-                    end_idx = min(len(dataset), i * slide + window_size)
+            # ---- REBUILD WINDOW ----
+            window = torch.cat(sub_windows, dim=0)
 
-                    print(f"Drift detected at trace {trace_ids[end_idx]}")
+            # ---- STEP 3: TRAIN + UPDATE THRESHOLD ----
+            threshold = comparator.train(window)
 
-        first = False
+            # ---- STEP 4: DRIFT DETECTION ----
+            if not first:
+
+                pairwise, consecutive = comparator.test(window)
+                max_disc = torch.max(pairwise)
+
+                if max_disc > threshold:
+
+                    if detector.detect(consecutive, threshold):
+
+                        end_idx = min(len(dataset), i * slide + window_size)
+                        drift_Trace_IDs.append(int(trace_ids[end_idx]))
+
+            first = False
+
+        print(f"Detected drift trace IDs for {prefix}: {drift_Trace_IDs}")
 
 
 if __name__ == "__main__":

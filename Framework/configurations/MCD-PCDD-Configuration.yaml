@@ -1,5 +1,5 @@
-dataset_path: eventLogs/Intermediate_1.npy
-trace_ids_path: traceIDs/Intermediate_1_trace_ids.npy
+dataset_path: eventLogs
+trace_ids_path: traceIDs
 
 win_size: 250
 sub_window_num: 5
