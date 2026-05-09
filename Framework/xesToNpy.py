@@ -26,6 +26,7 @@ def xesToNpy(event_log_folder, output_data_folder, output_trace_ids_folder):
 
         for trace_idx, trace in enumerate(event_log):
             prev_time = None
+            prev_activity_id = -1
 
             for event in trace:
                 activity = event["concept:name"]
@@ -40,10 +41,12 @@ def xesToNpy(event_log_folder, output_data_folder, output_trace_ids_folder):
 
                 prev_time = timestamp
 
-                data.append([activity_id, delta / 1e6])
+                data.append([prev_activity_id, activity_id, delta / 1e6])
                 trace_ids.append(trace_idx)
+
+                prev_activity_id = activity_id
         
-        data  = np.array(data, dtype=np.float32)
+        data = np.array(data, dtype=np.float32)
         trace_ids = np.array(trace_ids)
 
         np.save(output_data_path, data)
