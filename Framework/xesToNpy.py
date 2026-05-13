@@ -28,11 +28,17 @@ def xesToNpy(event_log_folder, output_data_folder, output_trace_ids_folder):
             prev_time = None
             prev_activity_id = -1
 
-            for event in trace:
+            for event_idx, event in enumerate(trace):
                 activity = event["concept:name"]
                 timestamp = event["time:timestamp"]
 
                 activity_id = activity_to_id[activity]
+
+                if event_idx < len(trace) - 1:
+                    next_activity = trace[event_idx + 1]["concept:name"]
+                    next_activity_id = activity_to_id[next_activity]
+                else:
+                    next_activity_id = -1
 
                 if prev_time is None:
                     delta = 0.0
@@ -41,7 +47,13 @@ def xesToNpy(event_log_folder, output_data_folder, output_trace_ids_folder):
 
                 prev_time = timestamp
 
-                data.append([prev_activity_id, activity_id, delta / 1e6])
+                data.append([
+                    prev_activity_id,
+                    activity_id,
+                    next_activity_id,
+                    delta / 1e6
+                ])
+
                 trace_ids.append(trace_idx)
 
                 prev_activity_id = activity_id
@@ -57,7 +69,7 @@ def xesToNpy(event_log_folder, output_data_folder, output_trace_ids_folder):
 
 
 xesToNpy(
-    r"C:\Users\tjerk\Documents\Git\Uni\MCD-PCDD-Thesis\EventLogs\Synthetic Logs",
-    "eventLogs",
-    "traceIDs"
+    r"C:\Users\tjerk\Documents\GitHub\MCD-PCDD-Thesis\EventLogs\Synthetic Logs",
+    r"Framework\eventLogs",
+    r"Framework\traceIDs"
 )

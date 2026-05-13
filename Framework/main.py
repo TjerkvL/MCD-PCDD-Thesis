@@ -54,7 +54,8 @@ def main(config_file, seed=1111, device='cpu'):
         trace_ids = np.load(os.path.join(trace_folder, trace_map[prefix]))
 
         window_size = config['win_size']
-        slide = int(window_size / config['sub_window_num'])
+        sub_window_size = int(window_size / config['sub_window_num'])
+        slide = sub_window_size * config['slide_sub_windows']
 
         # ---------------- MODULES ----------------
         sampler = Sampler(config['m'], config['k'], device)
@@ -107,7 +108,13 @@ def main(config_file, seed=1111, device='cpu'):
         drift_Trace_IDs = []
 
         # ---------------- MAIN LOOP ----------------
+        cooldown = 0
+        cooldown_windows = config['cooldown_windows']
+
         for i, window in enumerate(tqdm(loader, total=len(dataset_obj), desc=f"{prefix}")):
+
+            if cooldown > 0:
+                cooldown -= 1
 
             window = window.squeeze(0).to(device)
 
@@ -124,20 +131,26 @@ def main(config_file, seed=1111, device='cpu'):
             window = torch.cat(sub_windows, dim=0)
 
             # ---- STEP 3: TRAIN + UPDATE THRESHOLD ----
-            threshold = comparator.train(window)
+            retrain_interval = config['windows_per_threshold_update']
+
+            if i % retrain_interval == 0:
+                threshold = comparator.train(window)
 
             # ---- STEP 4: DRIFT DETECTION ----
-            if not first:
+            if not first and cooldown == 0:
 
                 pairwise, consecutive = comparator.test(window)
-                max_disc = torch.max(pairwise)
+
+                max_disc = torch.max(consecutive)
 
                 if max_disc > threshold:
 
                     if detector.detect(consecutive, threshold):
 
-                        end_idx = min(len(dataset), i * slide + window_size)
+                        end_idx = min(len(dataset) - 1, i * slide + window_size)
                         drift_Trace_IDs.append(int(trace_ids[end_idx]))
+
+                        cooldown = cooldown_windows
 
             first = False
 
