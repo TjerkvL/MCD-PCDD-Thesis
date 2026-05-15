@@ -111,6 +111,8 @@ def main(config_file, seed=1111, device='cpu'):
         cooldown = 0
         cooldown_windows = config['cooldown_windows']
 
+        warmup_windows = config['warmup_windows']
+
         for i, window in enumerate(tqdm(loader, total=len(dataset_obj), desc=f"{prefix}")):
 
             if cooldown > 0:
@@ -133,8 +135,12 @@ def main(config_file, seed=1111, device='cpu'):
             # ---- STEP 3: TRAIN + UPDATE THRESHOLD ----
             retrain_interval = config['windows_per_threshold_update']
 
-            if i % retrain_interval == 0:
+            # 🌱 WARMUP LOGIC ADDED HERE
+            in_warmup = i < warmup_windows
+
+            if (not in_warmup) and (i % retrain_interval == 0):
                 threshold = comparator.train(window)
+                #print("threshold:", threshold)
 
             # ---- STEP 4: DRIFT DETECTION ----
             if not first and cooldown == 0:
@@ -142,15 +148,19 @@ def main(config_file, seed=1111, device='cpu'):
                 pairwise, consecutive = comparator.test(window)
 
                 max_disc = torch.max(consecutive)
+                max_disc = torch.clamp(max_disc, 0, 50)
 
-                if max_disc > threshold:
+                # 🌱 optionally also disable detection during warmup
+                if not in_warmup:
 
-                    if detector.detect(consecutive, threshold):
+                    if max_disc > threshold:
 
-                        end_idx = min(len(dataset) - 1, i * slide + window_size)
-                        drift_Trace_IDs.append(int(trace_ids[end_idx]))
+                        if detector.detect(consecutive, threshold):
 
-                        cooldown = cooldown_windows
+                            end_idx = min(len(dataset) - 1, i * slide + window_size)
+                            drift_Trace_IDs.append(int(trace_ids[end_idx]))
+
+                            cooldown = cooldown_windows
 
             first = False
 

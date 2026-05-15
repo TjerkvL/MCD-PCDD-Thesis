@@ -219,4 +219,20 @@ martjushevCoords = {
     "BPIC2015Merged.xes" : [1199, 2031, 3440, 4493, 5649]
 }
 
-EvaluatePerformance(hueteCoords, actualDriftCoords, lag_window=150)
+MCDPCDD = {
+    "Simple_1.xes" : [],
+    "Simple_2.xes" : [1007, 1408],
+    "Simple_3.xes" : [],
+    "Simple_4.xes" : [649],
+    "Intermediate_1.xes" : [382, 1458],
+    "Intermediate_2.xes" : [322, 640, 986, 1247, 1577, 1869],
+    "Intermediate_3.xes" : [1323, 1486],
+    "Intermediate_4.xes" : [108, 640, 841, 1139, 1344, 1489, 1591, 1699, 1943],
+    "Difficult_1.xes" : [189, 426, 846, 1292, 1597],
+    "Difficult_2.xes" : [189, 854],
+    "Difficult_3.xes" : [780, 1427],
+    "Difficult_4.xes" : [712],
+    "BPIC2015Merged.xes" : [1199, 2031, 3440, 4493, 5649]
+}
+
+EvaluatePerformance(MCDPCDD, actualDriftCoords, lag_window=150)

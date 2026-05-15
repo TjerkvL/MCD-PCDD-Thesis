@@ -48,10 +48,24 @@ class Comparator:
         return dist[~mask].mean()
 
     def contrastive_loss(self, pos, neg):
-        pos = torch.exp(torch.stack(pos) / self.temperature)
-        neg = torch.exp(torch.stack(neg) / self.temperature)
+        #pos = torch.exp(torch.stack(pos) / self.temperature)
+        #neg = torch.exp(torch.stack(neg) / self.temperature)
 
-        return torch.log(torch.sum(pos) / (torch.sum(pos) + torch.sum(neg)))
+        #return torch.log(torch.sum(pos) / (torch.sum(pos) + torch.sum(neg)))
+        pos = torch.stack(pos)
+        neg = torch.stack(neg)
+
+        pos = torch.clamp(pos, 0, 20)
+        neg = torch.clamp(neg, 0, 20)
+
+        pos_exp = torch.exp(pos / self.temperature)
+        neg_exp = torch.exp(neg / self.temperature)
+
+        loss = -torch.log((torch.sum(pos_exp) + 1e-8) / (torch.sum(pos_exp) + torch.sum(neg_exp) + 1e-8))
+
+        #loss = torch.nan_to_num(loss, nan=0.0)
+
+        return loss
 
     def gp(self, samples, output):
         grads = torch.autograd.grad(
@@ -83,6 +97,7 @@ class Comparator:
             # ---------------- POS + WEAK NEG ----------------
             for samples in sub_samples:
                 emb = self.model(samples).mean(dim=1)
+                emb = torch.nn.functional.normalize(emb, p=2, dim=1)
 
                 pos, _ = self.compute_positive_loss(emb)
                 pos_losses.append(pos)

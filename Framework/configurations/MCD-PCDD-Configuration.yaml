@@ -7,6 +7,7 @@ min_subwindows: 4
 max_subwindows: 6
 slide_sub_windows: 1
 cooldown_windows: 12
+warmup_windows: 10
 
 hidden_size: 16
 output_size: 8
@@ -22,5 +23,5 @@ eps_big: 0.1
 temperature: 0.5
 lamb: 0.1
 windows_per_threshold_update: 2
-percentile: 0.9
+percentile: 0.8
 consecutive_required: 2
