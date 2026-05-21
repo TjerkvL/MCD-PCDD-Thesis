@@ -16,7 +16,7 @@ actualDriftCoords = {
     "Difficult_2.xes" : [400, 600, 800],
     "Difficult_3.xes" : [400, 800, 1200],
     "Difficult_4.xes" : [400, 600, 800],
-    "BPIC2015Merged.xes" : [1199, 2031, 3440, 4493, 5649]
+    "BPIC2015Merged.xes" : [1199, 2031, 3440, 4493]
 }
 
 
