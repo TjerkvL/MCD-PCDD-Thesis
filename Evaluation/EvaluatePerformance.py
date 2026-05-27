@@ -16,7 +16,7 @@ actualDriftCoords = {
     "Difficult_2.xes" : [400, 600, 800],
     "Difficult_3.xes" : [400, 800, 1200],
     "Difficult_4.xes" : [400, 600, 800],
-    "BPIC2015Merged.xes" : [1199, 2031, 3440, 4493]
+    "BPIC2015Merged.xes" : [1079, 1948, 3299, 4388]
 }
 
 
@@ -541,24 +541,23 @@ martjushevCoords = {
     "Difficult_1.xes" : [401, 1221],
     "Difficult_2.xes" : [397, 548, 786],
     "Difficult_3.xes" : [760],
-    "Difficult_4.xes" : [375, 609, 792],
-    "BPIC2015Merged.xes" : [1199, 2031, 3440, 4493, 5649]
+    "Difficult_4.xes" : [375, 609, 792]
 }
 
-MCDPCDD = {
-    "Simple_1.xes" : [],
-    "Simple_2.xes" : [1007, 1408],
-    "Simple_3.xes" : [],
-    "Simple_4.xes" : [649],
-    "Intermediate_1.xes" : [382, 1458],
-    "Intermediate_2.xes" : [322, 640, 986, 1247, 1577, 1869],
-    "Intermediate_3.xes" : [1323, 1486],
-    "Intermediate_4.xes" : [108, 640, 841, 1139, 1344, 1489, 1591, 1699, 1943],
-    "Difficult_1.xes" : [189, 426, 846, 1292, 1597],
-    "Difficult_2.xes" : [189, 854],
-    "Difficult_3.xes" : [780, 1427],
-    "Difficult_4.xes" : [712],
-    "BPIC2015Merged.xes" : [1199, 2031, 3440, 4493, 5649]
+MCDPCDDCoords = {
+    "Simple_1.xes" : [304, 539],
+    "Simple_2.xes" : [925],
+    "Simple_3.xes" : [263, 733, 1176],
+    "Simple_4.xes" : [560, 1116],
+    "Intermediate_1.xes" : [600, 1330, 1988],
+    "Intermediate_2.xes" : [873, 1566, 1899],
+    "Intermediate_3.xes" : [92, 295, 570, 830, 997, 1298, 1582, 1733, 1894],
+    "Intermediate_4.xes" : [150, 345, 650, 800, 1064, 1177, 1338, 1437, 1639, 1760],
+    "Difficult_1.xes" : [908, 1230],
+    "Difficult_2.xes" : [82, 189, 354, 515, 616, 822],
+    "Difficult_3.xes" : [175, 473, 1041, 1286, 1678],
+    "Difficult_4.xes" : [850],
+    "BPIC2015Merged.xes" : [600, 1008, 2190, 2811, 4388]
 }
 
-EvaluatePerformance(MCDPCDD, actualDriftCoords, lag_window=150)
+EvaluatePerformance(MCDPCDDCoords, actualDriftCoords, lag_window=150)

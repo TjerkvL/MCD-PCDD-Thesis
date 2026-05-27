@@ -7,7 +7,7 @@ min_subwindows: 4
 max_subwindows: 6
 slide_sub_windows: 1
 cooldown_windows: 12
-warmup_windows: 10
+warmup_windows: 0
 
 hidden_size: 16
 output_size: 8
