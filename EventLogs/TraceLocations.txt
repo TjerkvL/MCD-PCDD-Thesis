@@ -24,4 +24,5 @@ Difficult:
 Real-world Log:
 
 BPIC 2015:
-1- 1199---2031---3440---4493---5649
+Actual Drift Transition Locations: 1199 - 2031 - 3440 - 4493 (5649)
+When accounting for 10% ending region [1079, 1948, 3299, 4388]

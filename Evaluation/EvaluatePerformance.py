@@ -20,90 +20,61 @@ actualDriftCoords = {
 }
 
 
-def EvaluatePerformance(detectedDriftCoords, actualDriftCoords, lag_window=50, plot=True):
-    """ Functiont that takes as input the detected drift locations and outputs most relevant performance metrics """
-    
+def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, lag_window=50, 
+                        plot=True, save_folder="evaluation_plots"):
+    """
+    Evaluates multiple concept drift detection methods.
 
-    #Intialize lists to be filled with the results
-    results = {}
-    all_f1 = []
-    all_latencies = []
+    Parameters
+    ----------
+    method_results_list : list[dict]
+        List of dictionaries containing detected drift coordinates per method.
 
-    # Calculate for each event log the performance and add the results to the earlier created lists
-    for log_name in actualDriftCoords:
-        actual = sorted(actualDriftCoords[log_name])
-        detected = sorted(detectedDriftCoords.get(log_name, []))
+    method_names : list[str]
+        Names corresponding to the dictionaries in method_results_list.
 
-        matched_actual = set()
-        matched_detected = set()
-        latencies = []
+    actualDriftCoords : dict
+        Dictionary containing actual drift locations.
 
-        for i, a in enumerate(actual):
-            best_distance = float('inf')
-            best_j = None
+    lag_window : int
+        Maximum allowed detection delay to count as TP.
 
-            for j, d in enumerate(detected):
-                if j in matched_detected:
-                    continue
+    plot : bool
+        Whether to generate and save plots.
 
-                distance = d - a
-                if 0 <= distance <= lag_window and distance < best_distance:
-                    best_distance = distance
-                    best_j = j
+    save_folder : str
+        Folder where plots will be stored.
 
-            if best_j is not None:
-                matched_actual.add(i)
-                matched_detected.add(best_j)
-                latencies.append(best_distance)
+    Returns
+    -------
+    all_results : dict
+        Nested dictionary containing all evaluation results.
+    """
 
-        TP = len(matched_actual)
-        FP = len(detected) - TP
-        FN = len(actual) - TP
+    import os
+    import numpy as np
+    import matplotlib.pyplot as plt
 
-        precision = TP / (TP + FP) if (TP + FP) > 0 else 0
-        recall = TP / (TP + FN) if (TP + FN) > 0 else 0
-        f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0
+    # ============================================================
+    # Validation
+    # ============================================================
 
-        avg_latency = np.mean(latencies) if latencies else None
+    if len(method_results_list) != len(method_names):
+        raise ValueError("method_results_list and method_names must have equal length.")
 
-        results[log_name] = {
-            "F1-score": f1,
-            "Precision": precision,
-            "Recall": recall,
-            "TP": TP,
-            "FP": FP,
-            "FN": FN,
-            "Avg Latency": avg_latency
-        }
+    os.makedirs(save_folder, exist_ok=True)
 
-        all_f1.append(f1)
-        if latencies:
-            all_latencies.extend(latencies)
+    # ============================================================
+    # Metadata used for plots
+    # ============================================================
 
-        print(f"{log_name}:")
-        print(f"  F1-score: {f1:.4f}")
-        print(f"  Precision: {precision:.4f}, Recall: {recall:.4f}")
-        print(f"  TP: {TP}, FP: {FP}, FN: {FN}")
-        print(f"  Avg Latency: {avg_latency:.2f}" if avg_latency is not None else "  Avg Latency: None")
-        print()
-
-    overall_f1 = np.mean(all_f1)
-    overall_latency = np.mean(all_latencies) if all_latencies else None
-
-    print("=== Average Evaluation Results ===")
-    print(f"Average F1-score: {overall_f1:.4f}")
-    print(f"Average Latency: {overall_latency:.2f}" if overall_latency is not None else "Average Latency: None")
-
-    results["OVERALL"] = {
-        "Average F1-score": overall_f1,
-        "Average Latency": overall_latency
-    }
-
-    #Creation of the plots showing the effect of noise drift frequency on accuracy and latency
     noise_levels = {
-        "Simple_1.xes": 0.0, "Simple_2.xes": 0.0, "Simple_3.xes": 0.0, "Simple_4.xes": 0.0,
+        "Simple_1.xes": 0.0, "Simple_2.xes": 0.0,
+        "Simple_3.xes": 0.0, "Simple_4.xes": 0.0,
+
         "Intermediate_1.xes": 0.1, "Intermediate_3.xes": 0.1,
         "Intermediate_2.xes": 0.2, "Intermediate_4.xes": 0.2,
+
         "Difficult_1.xes": 0.2, "Difficult_3.xes": 0.2,
         "Difficult_2.xes": 0.35, "Difficult_4.xes": 0.35,
     }
@@ -111,16 +82,44 @@ def EvaluatePerformance(detectedDriftCoords, actualDriftCoords, lag_window=50, p
     drift_spacing = {
         "Intermediate_1.xes": 667, "Intermediate_3.xes": 667,
         "Intermediate_2.xes": 400, "Intermediate_4.xes": 400,
+
         "Difficult_1.xes": 400, "Difficult_3.xes": 400,
         "Difficult_2.xes": 200, "Difficult_4.xes": 200,
     }
 
-    def aggregate(metric_key, mapping):
+    # ============================================================
+    # Consistent colors for all methods
+    # ============================================================
+
+    cmap = plt.get_cmap("tab10")
+    method_colors = {
+        method_names[i]: cmap(i % 10)
+        for i in range(len(method_names))
+    }
+
+    # ============================================================
+    # Store everything here
+    # ============================================================
+
+    all_results = {}
+
+    overall_f1_scores = []
+    overall_latencies = []
+
+    # ============================================================
+    # Helper functions
+    # ============================================================
+
+    def aggregate_metric(results, metric_key, mapping):
         grouped = {}
+
         for log, value in mapping.items():
+
             if log not in results:
                 continue
+
             metric = results[log][metric_key]
+
             if metric is None:
                 continue
 
@@ -128,45 +127,372 @@ def EvaluatePerformance(detectedDriftCoords, actualDriftCoords, lag_window=50, p
 
         x = sorted(grouped.keys())
         y = [np.mean(grouped[v]) for v in x]
+
         return x, y
 
+    def compute_group_average(results, group_prefix):
+        matching_logs = [
+            log for log in results.keys()
+            if log.startswith(group_prefix)
+        ]
+
+        if len(matching_logs) == 0:
+            return None
+
+        f1_scores = [results[log]["F1-score"] for log in matching_logs]
+        latencies = [
+            results[log]["Avg Latency"]
+            for log in matching_logs
+            if results[log]["Avg Latency"] is not None
+        ]
+
+        return {
+            "Average F1-score": np.mean(f1_scores),
+            "Average Latency": np.mean(latencies) if latencies else None
+        }
+
+    # ============================================================
+    # Evaluate every method
+    # ============================================================
+
+    for method_idx, detectedDriftCoords in enumerate(method_results_list):
+
+        method_name = method_names[method_idx]
+
+        print("\n" + "=" * 80)
+        print(f"METHOD: {method_name}")
+        print("=" * 80)
+
+        results = {}
+
+        all_f1 = []
+        all_latencies = []
+
+        # --------------------------------------------------------
+        # Evaluate every log
+        # --------------------------------------------------------
+
+        for log_name in actualDriftCoords:
+
+            actual = sorted(actualDriftCoords[log_name])
+            detected = sorted(detectedDriftCoords.get(log_name, []))
+
+            matched_actual = set()
+            matched_detected = set()
+
+            latencies = []
+
+            # ----------------------------------------------------
+            # Match detections to actual drifts
+            # ----------------------------------------------------
+
+            for i, a in enumerate(actual):
+
+                best_distance = float('inf')
+                best_j = None
+
+                for j, d in enumerate(detected):
+
+                    if j in matched_detected:
+                        continue
+
+                    distance = d - a
+
+                    if 0 <= distance <= lag_window and distance < best_distance:
+                        best_distance = distance
+                        best_j = j
+
+                if best_j is not None:
+                    matched_actual.add(i)
+                    matched_detected.add(best_j)
+                    latencies.append(best_distance)
+
+            # ----------------------------------------------------
+            # Metrics
+            # ----------------------------------------------------
+
+            TP = len(matched_actual)
+            FP = len(detected) - TP
+            FN = len(actual) - TP
+
+            precision = TP / (TP + FP) if (TP + FP) > 0 else 0
+            recall = TP / (TP + FN) if (TP + FN) > 0 else 0
+
+            f1 = (
+                2 * precision * recall / (precision + recall)
+                if (precision + recall) > 0 else 0
+            )
+
+            avg_latency = np.mean(latencies) if latencies else None
+
+            # ----------------------------------------------------
+            # Store results
+            # ----------------------------------------------------
+
+            results[log_name] = {
+                "F1-score": f1,
+                "Precision": precision,
+                "Recall": recall,
+                "TP": TP,
+                "FP": FP,
+                "FN": FN,
+                "Avg Latency": avg_latency
+            }
+
+            all_f1.append(f1)
+
+            if latencies:
+                all_latencies.extend(latencies)
+
+            # ----------------------------------------------------
+            # Print log results
+            # ----------------------------------------------------
+
+            print(f"\n{log_name}")
+            print("-" * 40)
+            print(f"F1-score     : {f1:.4f}")
+            print(f"Precision    : {precision:.4f}")
+            print(f"Recall       : {recall:.4f}")
+            print(f"TP / FP / FN : {TP} / {FP} / {FN}")
+
+            if avg_latency is not None:
+                print(f"Avg Latency  : {avg_latency:.2f}")
+            else:
+                print("Avg Latency  : None")
+
+        # --------------------------------------------------------
+        # Overall metrics
+        # --------------------------------------------------------
+
+        overall_f1 = np.mean(all_f1)
+        overall_latency = np.mean(all_latencies) if all_latencies else None
+
+        results["OVERALL"] = {
+            "Average F1-score": overall_f1,
+            "Average Latency": overall_latency
+        }
+
+        # --------------------------------------------------------
+        # Category averages
+        # --------------------------------------------------------
+
+        results["SIMPLE_AVERAGE"] = compute_group_average(results, "Simple")
+        results["INTERMEDIATE_AVERAGE"] = compute_group_average(results, "Intermediate")
+        results["DIFFICULT_AVERAGE"] = compute_group_average(results, "Difficult")
+
+        # --------------------------------------------------------
+        # Print category summaries
+        # --------------------------------------------------------
+
+        print("\n--- CATEGORY AVERAGES ---")
+
+        for category in [
+            "SIMPLE_AVERAGE",
+            "INTERMEDIATE_AVERAGE",
+            "DIFFICULT_AVERAGE"
+        ]:
+
+            category_results = results[category]
+
+            print(f"\n{category}")
+
+            print(
+                f"Average F1-score : "
+                f"{category_results['Average F1-score']:.4f}"
+            )
+
+            latency = category_results["Average Latency"]
+
+            if latency is not None:
+                print(f"Average Latency : {latency:.2f}")
+            else:
+                print("Average Latency : None")
+
+        print("\n--- OVERALL ---")
+        print(f"Average F1-score : {overall_f1:.4f}")
+
+        if overall_latency is not None:
+            print(f"Average Latency : {overall_latency:.2f}")
+        else:
+            print("Average Latency : None")
+
+        # --------------------------------------------------------
+        # Save method results
+        # --------------------------------------------------------
+
+        all_results[method_name] = results
+
+        overall_f1_scores.append(overall_f1)
+        overall_latencies.append(
+            overall_latency if overall_latency is not None else 0
+        )
+
+    # ============================================================
+    # PLOTS
+    # ============================================================
+
     if plot:
-        noise_x_acc, noise_y_acc = aggregate("F1-score", noise_levels)
-        noise_x_lat, noise_y_lat = aggregate("Avg Latency", noise_levels)
 
-        freq_x_acc, freq_y_acc = aggregate("F1-score", drift_spacing)
-        freq_x_lat, freq_y_lat = aggregate("Avg Latency", drift_spacing)
+        # --------------------------------------------------------
+        # Combined line charts
+        # --------------------------------------------------------
 
-        fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+        fig, axs = plt.subplots(2, 2, figsize=(14, 10))
 
-        # Top-left: Noise vs Accuracy
-        axs[0, 0].plot(noise_x_acc, noise_y_acc, marker='o')
+        # ========================================================
+        # Plot each method
+        # ========================================================
+
+        for method_name in method_names:
+
+            results = all_results[method_name]
+
+            color = method_colors[method_name]
+
+            # Noise vs F1
+            noise_x_acc, noise_y_acc = aggregate_metric(
+                results, "F1-score", noise_levels
+            )
+
+            axs[0, 0].plot(
+                noise_x_acc,
+                noise_y_acc,
+                marker='o',
+                label=method_name,
+                color=color
+            )
+
+            # Drift spacing vs F1
+            freq_x_acc, freq_y_acc = aggregate_metric(
+                results, "F1-score", drift_spacing
+            )
+
+            axs[0, 1].plot(
+                freq_x_acc,
+                freq_y_acc,
+                marker='o',
+                label=method_name,
+                color=color
+            )
+
+            # Noise vs latency
+            noise_x_lat, noise_y_lat = aggregate_metric(
+                results, "Avg Latency", noise_levels
+            )
+
+            axs[1, 0].plot(
+                noise_x_lat,
+                noise_y_lat,
+                marker='o',
+                label=method_name,
+                color=color
+            )
+
+            # Drift spacing vs latency
+            freq_x_lat, freq_y_lat = aggregate_metric(
+                results, "Avg Latency", drift_spacing
+            )
+
+            axs[1, 1].plot(
+                freq_x_lat,
+                freq_y_lat,
+                marker='o',
+                label=method_name,
+                color=color
+            )
+
+        # ========================================================
+        # Titles and labels
+        # ========================================================
+
         axs[0, 0].set_title("Noise vs F1-score")
         axs[0, 0].set_xlabel("Noise Level")
         axs[0, 0].set_ylabel("F1-score")
+        axs[0, 0].legend()
 
-        # Top-right: Drift Frequency vs Accuracy
-        axs[0, 1].plot(freq_x_acc, freq_y_acc, marker='o')
         axs[0, 1].set_title("Drift Spacing vs F1-score")
         axs[0, 1].set_xlabel("Drift Spacing")
         axs[0, 1].set_ylabel("F1-score")
+        axs[0, 1].legend()
 
-        # Bottom-left: Noise vs Latency
-        axs[1, 0].plot(noise_x_lat, noise_y_lat, marker='o')
         axs[1, 0].set_title("Noise vs Latency")
         axs[1, 0].set_xlabel("Noise Level")
         axs[1, 0].set_ylabel("Latency")
+        axs[1, 0].legend()
 
-        # Bottom-right: Drift Frequency vs Latency
-        axs[1, 1].plot(freq_x_lat, freq_y_lat, marker='o')
         axs[1, 1].set_title("Drift Spacing vs Latency")
         axs[1, 1].set_xlabel("Drift Spacing")
         axs[1, 1].set_ylabel("Latency")
+        axs[1, 1].legend()
 
         plt.tight_layout()
-        plt.show()
 
-    return results
+        plt.savefig(
+            os.path.join(save_folder, "combined_line_charts.png"),
+            dpi=300,
+            bbox_inches='tight'
+        )
+
+        plt.close()
+
+        # --------------------------------------------------------
+        # Bar chart - Average F1
+        # --------------------------------------------------------
+
+        plt.figure(figsize=(10, 6))
+
+        bar_colors = [method_colors[m] for m in method_names]
+
+        plt.bar(
+            method_names,
+            overall_f1_scores,
+            color=bar_colors
+        )
+
+        plt.title("Average F1-score per Method")
+        plt.ylabel("Average F1-score")
+        plt.xticks(rotation=15)
+
+        plt.tight_layout()
+
+        plt.savefig(
+            os.path.join(save_folder, "average_f1_scores.png"),
+            dpi=300,
+            bbox_inches='tight'
+        )
+
+        plt.close()
+
+        # --------------------------------------------------------
+        # Bar chart - Average Latency
+        # --------------------------------------------------------
+
+        plt.figure(figsize=(10, 6))
+
+        plt.bar(
+            method_names,
+            overall_latencies,
+            color=bar_colors
+        )
+
+        plt.title("Average Latency per Method")
+        plt.ylabel("Latency")
+        plt.xticks(rotation=15)
+
+        plt.tight_layout()
+
+        plt.savefig(
+            os.path.join(save_folder, "average_latencies.png"),
+            dpi=300,
+            bbox_inches='tight'
+        )
+
+        plt.close()
+
+        print("\nPlots saved to:")
+        print(save_folder)
+
+    return all_results
 
 
 #Dictionary of the resuls to be evaluated, coupling the file name with the list of detected drift locations
