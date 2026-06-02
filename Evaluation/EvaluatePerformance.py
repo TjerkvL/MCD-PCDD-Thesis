@@ -22,34 +22,6 @@ actualDriftCoords = {
 
 def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, lag_window=50, 
                         plot=True, save_folder="evaluation_plots"):
-    """
-    Evaluates multiple concept drift detection methods.
-
-    Parameters
-    ----------
-    method_results_list : list[dict]
-        List of dictionaries containing detected drift coordinates per method.
-
-    method_names : list[str]
-        Names corresponding to the dictionaries in method_results_list.
-
-    actualDriftCoords : dict
-        Dictionary containing actual drift locations.
-
-    lag_window : int
-        Maximum allowed detection delay to count as TP.
-
-    plot : bool
-        Whether to generate and save plots.
-
-    save_folder : str
-        Folder where plots will be stored.
-
-    Returns
-    -------
-    all_results : dict
-        Nested dictionary containing all evaluation results.
-    """
 
     import os
     import numpy as np
@@ -88,22 +60,25 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
     }
 
     # ============================================================
-    # Consistent colors for all methods
+    # Consistent colors
     # ============================================================
 
     cmap = plt.get_cmap("tab10")
+
     method_colors = {
         method_names[i]: cmap(i % 10)
         for i in range(len(method_names))
     }
 
     # ============================================================
-    # Store everything here
+    # Storage
     # ============================================================
 
     all_results = {}
 
     overall_f1_scores = []
+    overall_precisions = []
+    overall_recalls = []
     overall_latencies = []
 
     # ============================================================
@@ -111,6 +86,7 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
     # ============================================================
 
     def aggregate_metric(results, metric_key, mapping):
+
         grouped = {}
 
         for log, value in mapping.items():
@@ -131,6 +107,7 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
         return x, y
 
     def compute_group_average(results, group_prefix):
+
         matching_logs = [
             log for log in results.keys()
             if log.startswith(group_prefix)
@@ -140,6 +117,17 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
             return None
 
         f1_scores = [results[log]["F1-score"] for log in matching_logs]
+
+        precision_scores = [
+            results[log]["Precision"]
+            for log in matching_logs
+        ]
+
+        recall_scores = [
+            results[log]["Recall"]
+            for log in matching_logs
+        ]
+
         latencies = [
             results[log]["Avg Latency"]
             for log in matching_logs
@@ -148,6 +136,8 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
 
         return {
             "Average F1-score": np.mean(f1_scores),
+            "Average Precision": np.mean(precision_scores),
+            "Average Recall": np.mean(recall_scores),
             "Average Latency": np.mean(latencies) if latencies else None
         }
 
@@ -166,6 +156,8 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
         results = {}
 
         all_f1 = []
+        all_precisions = []
+        all_recalls = []
         all_latencies = []
 
         # --------------------------------------------------------
@@ -183,7 +175,7 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
             latencies = []
 
             # ----------------------------------------------------
-            # Match detections to actual drifts
+            # Match detections
             # ----------------------------------------------------
 
             for i, a in enumerate(actual):
@@ -240,12 +232,14 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
             }
 
             all_f1.append(f1)
+            all_precisions.append(precision)
+            all_recalls.append(recall)
 
             if latencies:
                 all_latencies.extend(latencies)
 
             # ----------------------------------------------------
-            # Print log results
+            # Print results
             # ----------------------------------------------------
 
             print(f"\n{log_name}")
@@ -265,10 +259,18 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
         # --------------------------------------------------------
 
         overall_f1 = np.mean(all_f1)
-        overall_latency = np.mean(all_latencies) if all_latencies else None
+        overall_precision = np.mean(all_precisions)
+        overall_recall = np.mean(all_recalls)
+
+        overall_latency = (
+            np.mean(all_latencies)
+            if all_latencies else None
+        )
 
         results["OVERALL"] = {
             "Average F1-score": overall_f1,
+            "Average Precision": overall_precision,
+            "Average Recall": overall_recall,
             "Average Latency": overall_latency
         }
 
@@ -281,7 +283,7 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
         results["DIFFICULT_AVERAGE"] = compute_group_average(results, "Difficult")
 
         # --------------------------------------------------------
-        # Print category summaries
+        # Print summaries
         # --------------------------------------------------------
 
         print("\n--- CATEGORY AVERAGES ---")
@@ -296,33 +298,37 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
 
             print(f"\n{category}")
 
-            print(
-                f"Average F1-score : "
-                f"{category_results['Average F1-score']:.4f}"
-            )
+            print(f"Average F1-score  : {category_results['Average F1-score']:.4f}")
+            print(f"Average Precision : {category_results['Average Precision']:.4f}")
+            print(f"Average Recall    : {category_results['Average Recall']:.4f}")
 
             latency = category_results["Average Latency"]
 
             if latency is not None:
-                print(f"Average Latency : {latency:.2f}")
+                print(f"Average Latency  : {latency:.2f}")
             else:
-                print("Average Latency : None")
+                print("Average Latency  : None")
 
         print("\n--- OVERALL ---")
-        print(f"Average F1-score : {overall_f1:.4f}")
+        print(f"Average F1-score  : {overall_f1:.4f}")
+        print(f"Average Precision : {overall_precision:.4f}")
+        print(f"Average Recall    : {overall_recall:.4f}")
 
         if overall_latency is not None:
-            print(f"Average Latency : {overall_latency:.2f}")
+            print(f"Average Latency  : {overall_latency:.2f}")
         else:
-            print("Average Latency : None")
+            print("Average Latency  : None")
 
         # --------------------------------------------------------
-        # Save method results
+        # Save results
         # --------------------------------------------------------
 
         all_results[method_name] = results
 
         overall_f1_scores.append(overall_f1)
+        overall_precisions.append(overall_precision)
+        overall_recalls.append(overall_recall)
+
         overall_latencies.append(
             overall_latency if overall_latency is not None else 0
         )
@@ -339,14 +345,9 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
 
         fig, axs = plt.subplots(2, 2, figsize=(14, 10))
 
-        # ========================================================
-        # Plot each method
-        # ========================================================
-
         for method_name in method_names:
 
             results = all_results[method_name]
-
             color = method_colors[method_name]
 
             # Noise vs F1
@@ -401,10 +402,6 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
                 color=color
             )
 
-        # ========================================================
-        # Titles and labels
-        # ========================================================
-
         axs[0, 0].set_title("Noise vs F1-score")
         axs[0, 0].set_xlabel("Noise Level")
         axs[0, 0].set_ylabel("F1-score")
@@ -436,18 +433,25 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
         plt.close()
 
         # --------------------------------------------------------
-        # Bar chart - Average F1
+        # Shared bar colors
+        # --------------------------------------------------------
+
+        bar_colors = [method_colors[m] for m in method_names]
+
+        # --------------------------------------------------------
+        # Average F1
         # --------------------------------------------------------
 
         plt.figure(figsize=(10, 6))
 
-        bar_colors = [method_colors[m] for m in method_names]
-
         plt.bar(
             method_names,
             overall_f1_scores,
-            color=bar_colors
+            color=bar_colors,
+            width=0.5
         )
+
+        plt.ylim(0, 0.6)
 
         plt.title("Average F1-score per Method")
         plt.ylabel("Average F1-score")
@@ -464,7 +468,66 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
         plt.close()
 
         # --------------------------------------------------------
-        # Bar chart - Average Latency
+        # Average Precision
+        # --------------------------------------------------------
+
+        plt.figure(figsize=(10, 6))
+
+        plt.bar(
+            method_names,
+            overall_precisions,
+            color=bar_colors,
+            width=0.5
+        )
+
+        plt.ylim(0, 0.6)
+
+        plt.title("Average Precision per Method")
+        plt.ylabel("Average Precision")
+        plt.xticks(rotation=15)
+
+        plt.tight_layout()
+
+        plt.savefig(
+            os.path.join(save_folder, "average_precision_scores.png"),
+            dpi=300,
+            bbox_inches='tight'
+        )
+
+        plt.close()
+
+        # --------------------------------------------------------
+        # Average Recall
+        # --------------------------------------------------------
+
+        plt.figure(figsize=(10, 6))
+
+        plt.bar(
+            method_names,
+            overall_recalls,
+            color=bar_colors,
+            width=0.5
+        )
+
+
+        plt.ylim(0, 0.6)
+
+        plt.title("Average Recall per Method")
+        plt.ylabel("Average Recall")
+        plt.xticks(rotation=15)
+
+        plt.tight_layout()
+
+        plt.savefig(
+            os.path.join(save_folder, "average_recall_scores.png"),
+            dpi=300,
+            bbox_inches='tight'
+        )
+
+        plt.close()
+
+        # --------------------------------------------------------
+        # Average Latency
         # --------------------------------------------------------
 
         plt.figure(figsize=(10, 6))
@@ -472,7 +535,8 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
         plt.bar(
             method_names,
             overall_latencies,
-            color=bar_colors
+            color=bar_colors,
+            width=0.5
         )
 
         plt.title("Average Latency per Method")
@@ -557,7 +621,22 @@ MCDPCDDCoords = {
     "Difficult_2.xes" : [82, 189, 354, 515, 616, 822],
     "Difficult_3.xes" : [175, 473, 1041, 1286, 1678],
     "Difficult_4.xes" : [850],
-    "BPIC2015Merged.xes" : [600, 1008, 2190, 2811, 4388]
+    "BPIC2015Merged.xes" : [6, 15, 28, 39, 47, 58, 67, 79, 89, 101, 110, 124, 132, 142, 151, 159, 174, 183, 192, 205, 215, 228, 237, 247, 261, 270, 301, 309, 335, 346, 362, 389, 415, 461, 491, 518, 556, 585, 608, 629, 644, 662, 679, 695, 716, 727, 746, 771, 787, 802, 824, 843, 862, 883, 906, 918, 931, 944, 960, 982, 1006, 1019, 1034, 1049, 1068, 1082, 1109, 1125, 1150, 1162, 1171, 1189, 1209, 1259, 1281, 1299, 1330, 1343, 1361, 1372, 1387, 1421, 1433, 1451, 1465, 1496, 1511, 1523, 1535, 1548, 1573, 1584, 1596, 1624, 1636, 1647, 1664, 1690, 1706, 1718, 1756, 1778, 1801, 1831, 1873, 1886, 1901, 1916, 1928, 1959, 1976, 1989, 2008, 2026, 2049, 2062, 2128, 2170, 2189, 2201, 2226, 2239, 2258, 2280, 2292, 2316, 2328, 2345, 2357, 2380, 2396, 2408, 2425, 2435, 2472, 2488, 2530, 2547, 2562, 2594, 2618, 2633, 2644, 2664, 2691, 2707, 2720, 2733, 2777, 2812, 2825, 2835, 2845, 2879, 2901, 2919, 2930, 2955, 2988, 3007, 3022, 3035, 3070, 3082, 3103, 3114, 3131, 3168, 3179, 3229, 3237, 3256, 3276, 3314, 3328, 3340, 3351, 3373, 3383, 3405, 3420, 3436, 3459, 3504, 3512, 3552, 3567, 3585, 3600, 3613, 3624, 3655, 3688, 3698, 3720, 3744, 3780, 3804, 3814, 3834, 3851, 3868, 3883, 3897, 3906, 3920, 3947, 3960, 3979, 3990, 3999, 4011, 4036, 4049, 4059, 4074, 4092, 4102, 4120, 4146, 4155, 4172, 4185, 4197, 4206, 4216, 4240, 4259, 4272, 4314, 4323, 4333, 4346, 4357, 4370, 4387, 4398, 4407]
 }
 
-EvaluatePerformance(MCDPCDDCoords, actualDriftCoords, lag_window=150)
+
+EvaluatePerformance(
+        method_results_list=[
+        deSousaCoords,
+        hueteCoords,
+        martjushevCoords,
+        MCDPCDDCoords],
+    method_names=[
+        "de Sousa",
+        "Huete",
+        "Martjushev",
+        "MCDPCDD"],
+    actualDriftCoords=actualDriftCoords,
+    lag_window=200,
+    save_folder="Evaluation/Plots"
+)
