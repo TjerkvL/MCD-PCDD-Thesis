@@ -2,7 +2,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import json
 
 #Actual drift locations, coupling the file name with the trace numbers
 actualDriftCoords = {
@@ -22,8 +21,13 @@ actualDriftCoords = {
 }
 
 
-def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, lag_window=50, 
-                        plot=True, save_folder="evaluation_plots"):
+def EvaluatePerformance(method_results_list,
+                        method_names,
+                        actualDriftCoords,
+                        allow_early_detection,
+                        lag_window=50,
+                        plot=True,
+                        save_folder="evaluation_plots"):
 
     import os
     import numpy as np
@@ -36,6 +40,11 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
     if len(method_results_list) != len(method_names):
         raise ValueError("method_results_list and method_names must have equal length.")
 
+    if len(allow_early_detection) != len(method_names):
+        raise ValueError(
+            "allow_early_detection must have the same length as method_names."
+        )
+    
     os.makedirs(save_folder, exist_ok=True)
 
     # ============================================================
@@ -150,6 +159,7 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
     for method_idx, detectedDriftCoords in enumerate(method_results_list):
 
         method_name = method_names[method_idx]
+        allow_early = allow_early_detection[method_idx]
 
         print("\n" + "=" * 80)
         print(f"METHOD: {method_name}")
@@ -192,9 +202,16 @@ def EvaluatePerformance(method_results_list, method_names, actualDriftCoords, la
 
                     distance = d - a
 
-                    if 0 <= distance <= lag_window and distance < best_distance:
-                        best_distance = distance
-                        best_j = j
+                    if allow_early:
+                        # Offline methods: allow detections before or after the drift
+                        if abs(distance) <= lag_window and abs(distance) < best_distance:
+                            best_distance = abs(distance)
+                            best_j = j
+                    else:
+                        # Online methods: only allow detections after the drift
+                        if 0 <= distance <= lag_window and distance < best_distance:
+                            best_distance = distance
+                            best_j = j
 
                 if best_j is not None:
                     matched_actual.add(i)
@@ -611,36 +628,37 @@ martjushevCoords = {
 }
 
 MCDPCDDCoords = {
-    "Simple_1.xes" : [304, 539],
-    "Simple_2.xes" : [925],
-    "Simple_3.xes" : [263, 733, 1176],
-    "Simple_4.xes" : [560, 1116],
-    "Intermediate_1.xes" : [600, 1330, 1988],
-    "Intermediate_2.xes" : [873, 1566, 1899],
-    "Intermediate_3.xes" : [92, 295, 570, 830, 997, 1298, 1582, 1733, 1894],
-    "Intermediate_4.xes" : [150, 345, 650, 800, 1064, 1177, 1338, 1437, 1639, 1760],
-    "Difficult_1.xes" : [908, 1230],
-    "Difficult_2.xes" : [82, 189, 354, 515, 616, 822],
-    "Difficult_3.xes" : [175, 473, 1041, 1286, 1678],
-    "Difficult_4.xes" : [850],
+    "Simple_1.xes" : [1311],
+    "Simple_2.xes" : [332, 1329, 1823],
+    "Simple_3.xes" : [678],
+    "Simple_4.xes" : [532, 914, 1287],
+    "Intermediate_1.xes" : [357, 956, 1458, 1865],
+    "Intermediate_2.xes" : [379, 664, 966, 1369],
+    "Intermediate_3.xes" : [206, 466, 1405, 1570],
+    "Intermediate_4.xes" : [74, 262, 640, 841, 1112, 1245],
+    "Difficult_1.xes" : [401, 1230],
+    "Difficult_2.xes" : [189, 649, 854],
+    "Difficult_3.xes" : [190, 800, 1153, 1783],
+    "Difficult_4.xes" : [180, 712, 995],
     "BPIC2015Merged.xes" : [10, 20, 30, 43, 52, 64, 73, 89, 100, 109, 119, 132, 146, 159, 177, 195, 229, 246, 268, 282, 304, 313, 327, 335, 351, 377, 395, 412, 460, 483, 498, 519, 537, 563, 610, 627, 657, 697, 716, 731, 749, 765, 780, 791, 821, 836, 851, 868, 881, 895, 914, 935, 954, 966, 982, 1007, 1020, 1042, 1058, 1073, 1083, 1120, 1140, 1155, 1166, 1188, 1201, 1213, 1245, 1265, 1282, 1306, 1320, 1335, 1347, 1363, 1376, 1395, 1419, 1432, 1455, 1470, 1523, 1539, 1557, 1576, 1592, 1607, 1624, 1637, 1658, 1690, 1710, 1726, 1740, 1753, 1778, 1814, 1861, 1878, 1892, 1905, 1920, 1938, 1951, 1989, 2008, 2028, 2050, 2124, 2143, 2157, 2179, 2193, 2215, 2230, 2245, 2260, 2278, 2294, 2310, 2329, 2354, 2396, 2407, 2419, 2429, 2443, 2475, 2487, 2509, 2529, 2553, 2578, 2594, 2612, 2655, 2667, 2687, 2715, 2735, 2769, 2796, 2815, 2858, 2876, 2919, 2950, 2969, 2991, 3007, 3017, 3037, 3066, 3077, 3095, 3119, 3151, 3171, 3191, 3201, 3212, 3229, 3237, 3256, 3278, 3287, 3308, 3319, 3333, 3344, 3365, 3386, 3396, 3405, 3418, 3430, 3441, 3461, 3477, 3505, 3514, 3526, 3553, 3567, 3597, 3621, 3639, 3655, 3669, 3695, 3706, 3723, 3741, 3755, 3770, 3779, 3792, 3803, 3814, 3834, 3844, 3856, 3866, 3874, 3899, 3923, 3934, 3947, 3956, 3966, 3983, 3993, 4000, 4018, 4034, 4048, 4062, 4082, 4096, 4104, 4119, 4129, 4148, 4169, 4183, 4197, 4219, 4244, 4261, 4272, 4305, 4317, 4326, 4348, 4362, 4371, 4381, 4391, 4401, 4415]
 }
-
-with open("Evaluation/ParamSensResults.json", "r") as f:
-    ParamSens = json.load(f)
 
 
 EvaluatePerformance(
         method_results_list=[
         deSousaCoords,
         hueteCoords,
-        martjushevCoords,
-        ParamSens],
+        martjushevCoords],
     method_names=[
         "de Sousa",
         "Huete",
-        "Martjushev",
-        "MCDPCDD"],
+        "Martjushev"],
+    
+    allow_early_detection=[
+    False,   # de Sousa (online)
+    False,   # Huete (online)
+    True     # Martjushev (offline)
+    ],
     actualDriftCoords=actualDriftCoords,
     lag_window=200,
     save_folder="Evaluation/Plots"
