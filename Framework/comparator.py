@@ -30,6 +30,11 @@ class Comparator:
 
         self.model.train()
 
+        for param in self.model.parameters():
+            param.requires_grad = True
+
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0)
+
     # ---------------- SAMPLING ----------------
     def generate_samples(self, sub_win):
         return self.sampler.sample(sub_win)

@@ -470,7 +470,7 @@ def EvaluatePerformance(method_results_list,
             width=0.5
         )
 
-        plt.ylim(0, 0.6)
+        plt.ylim(0, 0.75)
 
         plt.title("Average F1-score per Method")
         plt.ylabel("Average F1-score")
@@ -499,7 +499,7 @@ def EvaluatePerformance(method_results_list,
             width=0.5
         )
 
-        plt.ylim(0, 0.6)
+        plt.ylim(0, 0.75)
 
         plt.title("Average Precision per Method")
         plt.ylabel("Average Precision")
@@ -529,7 +529,7 @@ def EvaluatePerformance(method_results_list,
         )
 
 
-        plt.ylim(0, 0.6)
+        plt.ylim(0, 0.75)
 
         plt.title("Average Recall per Method")
         plt.ylabel("Average Recall")
@@ -646,18 +646,22 @@ MCDPCDDCoords = {
 
 EvaluatePerformance(
         method_results_list=[
-        deSousaCoords,
-        hueteCoords,
-        martjushevCoords],
+            MCDPCDDCoords,
+            deSousaCoords,
+            hueteCoords,
+            martjushevCoords
+        ],
     method_names=[
+        "MCD-PCDD",
         "de Sousa",
         "Huete",
         "Martjushev"],
     
     allow_early_detection=[
-    False,   # de Sousa (online)
-    False,   # Huete (online)
-    True     # Martjushev (offline)
+    False,
+    False,
+    False,
+    True
     ],
     actualDriftCoords=actualDriftCoords,
     lag_window=200,
