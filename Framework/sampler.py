@@ -1,9 +1,13 @@
+# Imports
 import torch
 
+
 class Sampler:
+
     """
     INPUT:
-        sub_window: torch.Tensor [T, F]
+        subWindow: torch.Tensor [T, F]
+
     OUTPUT:
         samples: torch.Tensor [k, n, F]
     """
@@ -13,11 +17,14 @@ class Sampler:
         self.k = k
         self.device = device
 
-    def sample(self, sub_window, model=None):
-        size = sub_window.size(0)
+    # Generate random samples from a sub-window
+    def sample(self, subWindow, model=None):
 
-        idx = torch.randint(0, size, (self.n * self.k,))
-        samples = sub_window[idx].clone().detach().requires_grad_(True)
+        windowSize = subWindow.size(0)
 
+        sampleIndices = torch.randint(0, windowSize, (self.n * self.k,))
+
+        samples = subWindow[sampleIndices].clone().detach().requires_grad_(True)
         samples = samples.view(self.k, self.n, -1)
+
         return samples.to(self.device)

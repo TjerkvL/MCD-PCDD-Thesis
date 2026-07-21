@@ -1,74 +1,99 @@
+# Imports
 from pm4py.objects.log.importer.xes import importer as xes_importer
 import numpy as np
 import os
 
-def xesToNpy(event_log_folder, output_data_folder, output_trace_ids_folder):
-    event_log_files = [f for f in os.listdir(event_log_folder) if f.endswith('.xes')]
 
-    for file in event_log_files:
-        event_log_path = os.path.join(event_log_folder, file)
-        base_name = file.replace('.xes', '')
+def convertXesToNpy(eventLogFolder, outputDataFolder, outputTraceIdsFolder):
 
-        output_data_path = os.path.join(output_data_folder, base_name + ".npy")
-        output_trace_ids_path = os.path.join(output_trace_ids_folder, base_name + "_trace_ids.npy")
+    # Get all XES files in the govem folder
+    eventLogFiles = [file for file in os.listdir(eventLogFolder) if file.endswith(".xes")]
 
-        event_log = xes_importer.apply(event_log_path)
+    for file in eventLogFiles:
+
+        eventLogPath = os.path.join(eventLogFolder, file)
+        logName = file.replace(".xes", "")
+
+        outputDataPath = os.path.join(outputDataFolder, logName + ".npy")
+        outputTraceIdsPath = os.path.join(outputTraceIdsFolder, logName + "_trace_ids.npy")
+
+        # Import event log
+        eventLog = xes_importer.apply(eventLogPath)
+
+        # Mapping the activities
 
         activities = set()
-        for trace in event_log:
+
+        for trace in eventLog:
             for event in trace:
                 activities.add(event["concept:name"])
 
-        activity_to_id = {act: i for i, act in enumerate(sorted(activities))}
+        activityToId = {
+            activity: index
+            for index, activity in enumerate(sorted(activities))
+        }
+
+        # Converting the log
 
         data = []
-        trace_ids = []
+        traceIds = []
 
-        for trace_idx, trace in enumerate(event_log):
-            prev_time = None
-            prev_activity_id = -1
+        for traceIndex, trace in enumerate(eventLog):
 
-            for event_idx, event in enumerate(trace):
+            previousTimestamp = None
+            previousActivityId = -1
+
+            for eventIndex, event in enumerate(trace):
+
                 activity = event["concept:name"]
                 timestamp = event["time:timestamp"]
 
-                activity_id = activity_to_id[activity]
+                activityId = activityToId[activity]
 
-                if event_idx < len(trace) - 1:
-                    next_activity = trace[event_idx + 1]["concept:name"]
-                    next_activity_id = activity_to_id[next_activity]
+                # Next activity
+                if eventIndex < len(trace) - 1:
+
+                    nextActivityId = activityToId[
+                        trace[eventIndex + 1]["concept:name"]
+                    ]
+
                 else:
-                    next_activity_id = -1
 
-                if prev_time is None:
-                    delta = 0.0
+                    nextActivityId = -1
+
+                # Time difference
+                if previousTimestamp is None:
+                    timeDifference = 0.0
+
                 else:
-                    delta = (timestamp - prev_time).total_seconds()
+                    timeDifference = (timestamp - previousTimestamp).total_seconds()
 
-                prev_time = timestamp
+                previousTimestamp = timestamp
 
                 data.append([
-                    prev_activity_id,
-                    activity_id,
-                    next_activity_id,
-                    delta / 1e6
+                    previousActivityId,
+                    activityId,
+                    nextActivityId,
+                    timeDifference / 1e6
                 ])
 
-                trace_ids.append(trace_idx)
+                traceIds.append(traceIndex)
 
-                prev_activity_id = activity_id
-        
+                previousActivityId = activityId
+
+        # Convert to numpy arrays
         data = np.array(data, dtype=np.float32)
-        trace_ids = np.array(trace_ids)
+        traceIds = np.array(traceIds)
 
-        np.save(output_data_path, data)
-        np.save(output_trace_ids_path, trace_ids)
+        # Save files
+        np.save(outputDataPath, data)
+        np.save(outputTraceIdsPath, traceIds)
 
-        print(f"Saved processed data to {output_data_path}")
-        print(f"Saved trace IDs to {output_trace_ids_path}")
+        print(f"Saved processed data to {outputDataPath}")
+        print(f"Saved trace IDs to {outputTraceIdsPath}")
 
 
-xesToNpy(
+convertXesToNpy(
     r"C:\Users\tjerk\Documents\GitHub\MCD-PCDD-Thesis\EventLogs\Synthetic Logs",
     r"Framework\eventLogs",
     r"Framework\traceIDs"

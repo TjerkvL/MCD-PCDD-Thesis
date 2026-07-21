@@ -1,62 +1,77 @@
+# Imports
 import argparse
-import torch
-import numpy as np
 import os
 import yaml
+
+import numpy as np
+import torch
 
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+#Import all components
 from collector import WindowedDataset, Collector
 from sampler import Sampler
 from encoder import Encoder
 from comparator import Comparator
 from detector import Detector
 
-def main(config_file, seed=1111, device='cpu'):
+"""
+    INPUT:
+        event log               (.npy file #1 created by xesToNpy.py)
+        event log trace IDs     (.npy #2 file created by xesToNpy.py)
+        configuration file      (.yaml file)
 
-    # ---------------- SEEDING ----------------
+    OUTPUT:
+        detected drift trace IDs
+"""
+
+
+def main(configFile, seed=1111, device='cpu'):
+
+    # Seed initialization
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    # ---------------- CONFIG ----------------
-    with open(config_file, 'r') as f:
-        config = yaml.safe_load(f)
+    # Load configuration
+    with open(configFile, 'r') as file:
+        config = yaml.safe_load(file)
 
-    dataset_folder = config['dataset_path']
-    trace_folder = config['trace_ids_path']
+    datasetFolder = config['dataset_path']
+    traceFolder = config['trace_ids_path']
 
-    # ---------------- FIND MATCHING FILES ----------------
-    dataset_files = [f for f in os.listdir(dataset_folder) if f.endswith('.npy')]
-    trace_files = [f for f in os.listdir(trace_folder) if f.endswith('.npy')]
+    # Find matching dataset and trace files
+    datasetFiles = [file for file in os.listdir(datasetFolder) if file.endswith('.npy')]
+    traceFiles = [file for file in os.listdir(traceFolder) if file.endswith('.npy')]
 
-    # Build mapping: prefix -> trace file
-    trace_map = {}
-    for tf in trace_files:
-        prefix = tf.replace('_trace_ids.npy', '')
-        trace_map[prefix] = tf
+    # Create trace file mapping
+    traceMap = {}
 
-    # ---------------- LOOP OVER DATASETS ----------------
-    for df in dataset_files:
+    for traceFile in traceFiles:
+        prefix = traceFile.replace('_trace_ids.npy', '')
+        traceMap[prefix] = traceFile
 
-        prefix = df.replace('.npy', '')
+    # Process every dataset
+    for datasetFile in datasetFiles:
 
-        if prefix not in trace_map:
-            print(f"Skipping {df} (no matching trace_ids)")
+        prefix = datasetFile.replace('.npy', '')
+
+        if prefix not in traceMap:
+            print(f"Skipping {datasetFile} (no matching trace_ids)")
             continue
 
         print(f"\nProcessing dataset: {prefix}")
 
-        dataset = np.load(os.path.join(dataset_folder, df), allow_pickle=True)
+        dataset = np.load(os.path.join(datasetFolder, datasetFile), allow_pickle=True)
         dataset = torch.tensor(dataset, dtype=torch.float32)
 
-        trace_ids = np.load(os.path.join(trace_folder, trace_map[prefix]))
+        traceIDs = np.load(os.path.join(traceFolder, traceMap[prefix]))
 
-        window_size = config['win_size']
-        sub_window_size = int(window_size / config['sub_window_num'])
-        slide = sub_window_size * config['slide_sub_windows']
+        windowSize = config['win_size']
+        subWindowSize = int(windowSize / config['sub_window_num'])
+        slide = subWindowSize * config['slide_sub_windows']
 
-        # ---------------- MODULES ----------------
+        # Create modules
         sampler = Sampler(config['m'], config['k'], device)
 
         model = Encoder(
@@ -84,7 +99,7 @@ def main(config_file, seed=1111, device='cpu'):
         )
 
         collector = Collector(
-            window_size,
+            windowSize,
             config['sub_window_num'],
             config['min_subwindows'],
             config['max_subwindows'],
@@ -97,80 +112,81 @@ def main(config_file, seed=1111, device='cpu'):
             config['consecutive_required']
         )
 
-        # ---------------- DATA LOADER ----------------
-        dataset_obj = WindowedDataset(dataset, window_size, slide)
-        loader = DataLoader(dataset_obj, batch_size=1)
+        # Create data loader
+        datasetObject = WindowedDataset(dataset, windowSize, slide)
+        loader = DataLoader(datasetObject, batch_size=1)
 
-        # ---------------- STATE ----------------
-        first = True
+        # Detection state
+        firstWindow = True
         threshold = 0
-        drift_Trace_IDs = []
+        driftTraceIDs = []
 
-        # ---------------- MAIN LOOP ----------------
         cooldown = 0
-        cooldown_windows = config['cooldown_windows']
+        cooldownWindows = config['cooldown_windows']
+        warmupWindows = config['warmup_windows']
 
-        warmup_windows = config['warmup_windows']
-
-        for i, window in enumerate(tqdm(loader, total=len(dataset_obj), desc=f"{prefix}")):
+        # Main detection loop
+        for i, window in enumerate(
+            tqdm(loader, total=len(datasetObject), desc=f"{prefix}")
+        ):
 
             if cooldown > 0:
                 cooldown -= 1
 
             window = window.squeeze(0).to(device)
 
-            # ---- STEP 1: SUB-WINDOWING ----
-            sub_windows = collector.collect(window)
+            # Split into sub-windows
+            subWindows = collector.collect(window)
 
-            # ---- STEP 2: ADAPTIVE SHRINK/EXPAND ----
-            candidate_pool = sub_windows.copy()
+            # Adaptive shrink/expand
+            candidatePool = subWindows.copy()
+            subWindows = collector.shrinkWindow(subWindows, threshold)
+            subWindows = collector.expandWindow(subWindows, candidatePool, threshold)
 
-            sub_windows = collector.shrink_window(sub_windows, threshold)
-            sub_windows = collector.expand_window(sub_windows, candidate_pool, threshold)
+            # Rebuild window
+            window = torch.cat(subWindows, dim=0)
 
-            # ---- REBUILD WINDOW ----
-            window = torch.cat(sub_windows, dim=0)
+            # Train and update threshold
+            retrainInterval = config['windows_per_threshold_update']
+            inWarmup = i < warmupWindows
 
-            # ---- STEP 3: TRAIN + UPDATE THRESHOLD ----
-            retrain_interval = config['windows_per_threshold_update']
-
-            # 🌱 WARMUP LOGIC ADDED HERE
-            in_warmup = i < warmup_windows
-
-            if (not in_warmup) and (i % retrain_interval == 0):
+            if not inWarmup and i % retrainInterval == 0:
                 threshold = comparator.train(window)
-                #print("threshold:", threshold)
 
-            # ---- STEP 4: DRIFT DETECTION ----
-            if not first and cooldown == 0:
+            # Drift detection
+            if not firstWindow and cooldown == 0:
 
                 pairwise, consecutive = comparator.test(window)
 
-                max_disc = torch.max(consecutive)
-                max_disc = torch.clamp(max_disc, 0, 50)
+                maximumDiscrepancy = torch.max(consecutive)
+                maximumDiscrepancy = torch.clamp(maximumDiscrepancy, 0, 50)
 
-                # 🌱 optionally also disable detection during warmup
-                if not in_warmup:
+                if not inWarmup:
 
-                    if max_disc > threshold:
+                    if maximumDiscrepancy > threshold:
 
                         if detector.detect(consecutive, threshold):
 
-                            end_idx = min(len(dataset) - 1, i * slide + window_size)
-                            drift_Trace_IDs.append(int(trace_ids[end_idx]))
+                            endIndex = min(len(dataset) - 1, i * slide + windowSize)
 
-                            cooldown = cooldown_windows
+                            driftTraceIDs.append(int(traceIDs[endIndex]))
 
-            first = False
+                            cooldown = cooldownWindows
 
-        print(f"Detected drift trace IDs for {prefix}: {drift_Trace_IDs}")
+            firstWindow = False
+
+        print(f"Detected drift trace IDs for {prefix}: {driftTraceIDs}")
+
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_file", required=True)
+
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     print("Using device:", device)
 
     main(args.config_file, device=device)

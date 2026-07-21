@@ -1,95 +1,125 @@
+# Imports
 import torch
 from torch.utils.data import Dataset
 
 
 class WindowedDataset(Dataset):
+
     """
     INPUT:
         dataset: torch.Tensor [T, F]
+
     OUTPUT:
         window: torch.Tensor [window_size, F]
     """
 
     def __init__(self, dataset, window_size, slide):
+
         self.dataset = dataset
-        self.window_size = window_size
+        self.windowSize = window_size
         self.slide = slide
 
     def __len__(self):
-        return max(1, (len(self.dataset) - self.window_size) // self.slide + 1)
 
-    def __getitem__(self, idx):
-        start = idx * self.slide
-        end = start + self.window_size
-        return self.dataset[start:end]
+        return max(1, (len(self.dataset) - self.windowSize) // self.slide + 1)
+
+    def __getitem__(self, index):
+
+        startIndex = index * self.slide
+        endIndex = startIndex + self.windowSize
+
+        return self.dataset[startIndex:endIndex]
 
 
 class Collector:
+
     """
     INPUT:
-        window_data: torch.Tensor [T_window, F]
+        windowData: torch.Tensor [T_window, F]
+
     OUTPUT:
-        list[torch.Tensor] sub_windows
+        list of [torch.Tensor] subWindows
     """
 
-    def __init__(self, window_size, sub_window_num, min_subwindows, max_subwindows, comparator):
-        self.window_size = window_size
-        self.sub_window_num = sub_window_num
-        self.min_subwindows = min_subwindows
-        self.max_subwindows = max_subwindows
+    def __init__(
+        self,
+        window_size,
+        sub_window_num,
+        min_subwindows,
+        max_subwindows,
+        comparator
+    ):
+
+        self.windowSize = window_size
+        self.subWindowNum = sub_window_num
+        self.minSubwindows = min_subwindows
+        self.maxSubwindows = max_subwindows
         self.comparator = comparator
 
-    # ---------- BASIC SPLIT ----------
-    def collect(self, window_data):
-        sub_size = int(window_data.size(0) / self.sub_window_num)
-        return list(torch.split(window_data, sub_size))
+    # Basic split of a window into smaller sub-windows
+    def collect(self, windowData):
 
-    # ---------- INTERNAL EMBEDDING ----------
-    def _embed(self, sub_window):
-        samples = self.comparator.generate_samples(sub_window)
-        embeddings = self.comparator.model(samples).mean(dim=1)
-        return embeddings
+        subWindowSize = int(windowData.size(0) / self.subWindowNum)
 
-    # ---------- PAIRWISE DISCREPANCY ----------
-    def compute_pairwise_discrepancy(self, sub_windows):
+        return list(torch.split(windowData, subWindowSize))
+
+    # Generate embeddings for a sub-window
+    def getEmbedding(self, subWindow):
+
+        samples = self.comparator.generateSamples(subWindow)
+
+        return self.comparator.model(samples).mean(dim=1)
+
+    # Calculate discrepancy between all sub-window pairs
+    def computePairwiseDiscrepancy(self, subWindows):
+
         discrepancies = []
 
-        for i in range(len(sub_windows)):
-            for j in range(i + 1, len(sub_windows)):
-                emb_i = self._embed(sub_windows[i])
-                emb_j = self._embed(sub_windows[j])
+        for i in range(len(subWindows)):
 
-                dist = self.comparator.compute_negative_loss(emb_i, emb_j)
-                discrepancies.append(dist)
+            for j in range(i + 1, len(subWindows)):
+
+                embeddingA = self.getEmbedding(subWindows[i])
+                embeddingB = self.getEmbedding(subWindows[j])
+
+                distance = self.comparator.computeNegativeLoss(
+                    embeddingA,
+                    embeddingB
+                )
+
+                discrepancies.append(distance)
 
         return torch.stack(discrepancies)
 
-    # ---------- SHRINK ----------
-    def shrink_window(self, sub_windows, threshold):
-        while len(sub_windows) > self.min_subwindows:
-            discrepancies = self.compute_pairwise_discrepancy(sub_windows)
-            max_disc = torch.max(discrepancies)
+    # Remove sub-windows until discrepancy is acceptable
+    def shrinkWindow(self, subWindows, threshold):
 
-            if max_disc <= threshold:
+        while len(subWindows) > self.minSubwindows:
+
+            discrepancies = self.computePairwiseDiscrepancy(subWindows)
+            maximumDiscrepancy = torch.max(discrepancies)
+
+            if maximumDiscrepancy <= threshold:
                 break
 
-            sub_windows = sub_windows[1:]
+            subWindows = subWindows[1:]
 
-        return sub_windows
+        return subWindows
 
-    # ---------- EXPAND ----------
-    def expand_window(self, sub_windows, candidate_pool, threshold):
-        while len(sub_windows) < self.max_subwindows and len(candidate_pool) > 0:
+    # Add candidate sub-windows while discrepancy remains acceptable
+    def expandWindow(self, subWindows, candidatePool, threshold):
 
-            new_sub_windows = [candidate_pool[-1]] + sub_windows
+        while len(subWindows) < self.maxSubwindows and len(candidatePool) > 0:
 
-            discrepancies = self.compute_pairwise_discrepancy(new_sub_windows)
-            max_disc = torch.max(discrepancies)
+            expandedWindows = [candidatePool[-1]] + subWindows
 
-            if max_disc > threshold:
+            discrepancies = self.computePairwiseDiscrepancy(expandedWindows)
+            maximumDiscrepancy = torch.max(discrepancies)
+
+            if maximumDiscrepancy > threshold:
                 break
 
-            sub_windows = new_sub_windows
-            candidate_pool = candidate_pool[:-1]
+            subWindows = expandedWindows
+            candidatePool = candidatePool[:-1]
 
-        return sub_windows
+        return subWindows

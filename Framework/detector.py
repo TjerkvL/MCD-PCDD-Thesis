@@ -1,21 +1,35 @@
 class Detector:
-    def __init__(self, comparator, percentile, consecutive_required):
+
+    """
+    INPUT:
+        consecutive maximum concept discrepancies
+
+    OUTPUT:
+        drift or no drift flagging
+    """
+
+    def __init__(self, comparator, percentile, consecutiveRequired):
+
         self.comparator = comparator
         self.percentile = percentile
-        self.consecutive_required = consecutive_required
+        self.consecutiveRequired = consecutiveRequired
 
+    # Detect drift based on consecutive threshold violations
     def detect(self, distances, threshold):
 
-        exceed = distances > threshold
+        exceedsThreshold = distances > threshold
+        consecutiveCount = 0
 
-        current = 0
+        for distanceExceeded in exceedsThreshold:
 
-        for x in exceed:
-            if x:
-                current += 1
-                if current >= self.consecutive_required:
+            if distanceExceeded:
+
+                consecutiveCount += 1
+
+                if consecutiveCount >= self.consecutiveRequired:
                     return True
+
             else:
-                current = 0
+                consecutiveCount = 0
 
         return False
