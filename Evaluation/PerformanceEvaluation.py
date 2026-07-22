@@ -388,7 +388,7 @@ martjushevCoords = {
 }
 
 
-MCDPCDDCoords = {
+MAOCDDCoords = {
     "Simple_1.xes" : [1311],
     "Simple_2.xes" : [332, 1329, 1823],
     "Simple_3.xes" : [678],
@@ -448,14 +448,14 @@ MCDPCDDCoords = {
 
 EvaluatePerformance(
     methodResultsList=[
-        MCDPCDDCoords,
+        MAOCDDCoords,
         deSousaCoords,
         hueteCoords,
         martjushevCoords
     ],
 
     methodNames=[
-        "MCD-PCDD",
+        "MAOCDD",
         "de Sousa",
         "Huete",
         "Martjushev"

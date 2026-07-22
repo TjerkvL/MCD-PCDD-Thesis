@@ -94,7 +94,7 @@ def convertXesToNpy(eventLogFolder, outputDataFolder, outputTraceIdsFolder):
 
 
 convertXesToNpy(
-    r"C:\Users\tjerk\Documents\GitHub\MCD-PCDD-Thesis\EventLogs\Synthetic Logs",
-    r"Framework\eventLogs",
-    r"Framework\traceIDs"
+    r"C:\Users\tjerk\Documents\GitHub\MCD-PCDD-Thesis\EventLogs\SemiSynthetic Logs",
+    r"MAOCDD-Framework\eventLogs",
+    r"MAOCDD-Framework\traceIDs"
 )

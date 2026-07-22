@@ -1,5 +1,5 @@
-dataset_path: Framework/eventLogs
-trace_ids_path: Framework/traceIDs
+dataset_path: MAOCDD-Framework/eventLogs
+trace_ids_path: MAOCDD-Framework/traceIDs
 
 win_size: 500
 sub_window_num: 6
